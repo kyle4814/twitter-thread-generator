@@ -1,172 +1,70 @@
-import os
-import logging
-import random
-from typing import List, Dict
-from flask import Flask, request, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_cors import CORS
-import requests
-import tweepy
-from newsapi import NewsApiClient
-import redis
-from datetime import datetime
-from dotenv import load_dotenv
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 AI Twitter Thread Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 AI Twitter Thread Generator</h1>
+        <p>Enter your preferences and let AI generate high-performing Twitter threads for you.</p>
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+        <div class="card">
+            <label for="topic">Topic:</label>
+            <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business, Sports)">
 
-# Load environment variables
-load_dotenv()
+            <label for="numThreads">Number of Threads:</label>
+            <input type="number" id="numThreads" min="1" max="10" value="1">
 
-# Initialize Flask app
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io').split(',')}})
+            <label for="threadLength">Insights per Thread:</label>
+            <input type="number" id="threadLength" min="1" max="8" value="5">
 
-# Initialize Redis
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
+            <div class="checkbox-container">
+                <input type="checkbox" id="randomMode">
+                <label for="randomMode">🔀 Enable Random Mode</label>
+            </div>
 
-# Test Redis connection
-try:
-    redis_client.ping()
-    logger.info("✅ Connected to Redis!")
-except Exception as e:
-    logger.error(f"❌ Failed to connect to Redis: {e}")
+            <button onclick="generateThread()">🔥 Generate Thread</button>
+        </div>
 
-# Initialize rate limiting
-limiter = Limiter(app=app, key_func=get_remote_address, storage_uri="redis://localhost:6379/0")
+        <div id="threadContainer" class="thread-container"></div>
+    </div>
 
-# Configuration
-CONFIG = {
-    'reddit': {
-        'client_id': os.getenv('REDDIT_CLIENT_ID'),
-        'client_secret': os.getenv('REDDIT_CLIENT_SECRET')
-    },
-    'twitter': {
-        'bearer_token': os.getenv('TWITTER_BEARER_TOKEN')
-    },
-    'newsapi': os.getenv('NEWSAPI_KEY'),
-    'monetization': {
-        'free_tier': {'daily_limit': 2, 'rate_limit': '2/day'},
-        'pro_tier': {'daily_limit': 100, 'rate_limit': '10/minute'}
-    }
-}
+    <script>
+        async function generateThread() {
+            const topic = document.getElementById('topic').value.trim() || 'AI';
+            const numThreads = parseInt(document.getElementById('numThreads').value) || 1;
+            const threadLength = parseInt(document.getElementById('threadLength').value) || 5;
+            const randomMode = document.getElementById('randomMode').checked;
 
-# Initialize APIs
-newsapi = NewsApiClient(api_key=CONFIG['newsapi'])
-twitter_api = tweepy.Client(bearer_token=CONFIG['twitter']['bearer_token'])
+            document.getElementById('threadContainer').innerHTML = '<p>⏳ Generating insights...</p>';
 
-# Enhanced topic database
-TOPIC_DATABASE = {
-    "AI": [
-        "🚀 AI is taking over. Here’s how you can profit before it’s too late!",
-        "🤖 Neural networks now predict consumer behavior with 87% accuracy!",
-    ],
-    "Business": [
-        "💰 Recession-proof business models thriving right now! Don’t miss out!",
-        "📈 How storytelling creates deep emotional connections with customers!",
-    ],
-    # Add more topics as needed
-}
+            try {
+                const response = await fetch('/generate_thread', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, num_threads: numThreads, thread_length: threadLength, random_mode: randomMode }),
+                });
 
-# Copywriting templates
-FRAMEWORKS = {
-    'hook_problem_solution': [
-        "🔥 {hook} (But here's what nobody is telling you...)",
-        "💔 The REAL problem: {problem}",
-        "💡 BREAKTHROUGH: {insight}",
-        "🚀 Solution: {solution} (👉 {cta})"
-    ],
-    'listicle': [
-        "🚀 {count} {topic} Secrets Top Experts Won't Tell You:",
-        "1️⃣ {point1}",
-        "2️⃣ {point2}",
-        "3️⃣ {point3}",
-        "🔑 The Key: {key_insight} (👉 {cta})"
-    ]
-}
+                const data = await response.json();
+                if (data.status === 'error' || !data.threads) {
+                    throw new Error(data.error || "Unexpected server response.");
+                }
 
-CTAS = [
-    "Grab your FREE guide → [LINK]",
-    "Join our premium community → [LINK]",
-    "Book your AI consultation → [LINK]"
-]
+                let threadsHTML = '';
+                data.threads.forEach((thread, index) => {
+                    let insightsHTML = thread.map(insight => `<div class="insight">✨ ${insight}</div>`).join('');
+                    threadsHTML += `<div class="thread"><h3>🔥 Thread ${index + 1}</h3>${insightsHTML}</div>`;
+                });
 
-# Helper functions
-def get_user_tier(api_key: str) -> str:
-    """Check user subscription status"""
-    return 'pro' if api_key else 'free'
+                document.getElementById('threadContainer').innerHTML = threadsHTML;
 
-def fetch_reddit_trends() -> List[str]:
-    """Fetch trending topics from Reddit"""
-    try:
-        token = get_reddit_token()
-        headers = {'Authorization': f'Bearer {token}', 'User-Agent': 'TwitterThreadGenerator/1.0'}
-        response = requests.get('https://www.reddit.com/r/popular/top.json?limit=10', headers=headers, timeout=5)
-        if response.status_code == 200:
-            return [post['data']['title'] for post in response.json().get('data', {}).get('children', [])]
-    except Exception as e:
-        logger.error(f"Reddit trends error: {e}")
-    return []
-
-def fetch_twitter_trends() -> List[str]:
-    """Fetch trending topics from Twitter"""
-    try:
-        trends = twitter_api.get_place_trends(id=1)  # Worldwide trends
-        return [trend['name'] for trend in trends[0]['trends']][:10]
-    except Exception as e:
-        logger.error(f"Twitter trends error: {e}")
-    return []
-
-def fetch_news_trends() -> List[str]:
-    """Fetch trending news headlines"""
-    try:
-        news = newsapi.get_top_headlines(language='en', page_size=10)
-        return [article['title'] for article in news.get('articles', [])]
-    except Exception as e:
-        logger.error(f"News trends error: {e}")
-    return []
-
-def fetch_trending_topics() -> List[str]:
-    """Aggregate trends from multiple sources with caching"""
-    cache_key = f"trends:{datetime.now().strftime('%Y-%m-%d')}"
-    if redis_client.exists(cache_key):
-        return [t.decode('utf-8') for t in redis_client.smembers(cache_key)]
-    
-    sources = {
-        'reddit': fetch_reddit_trends(),
-        'twitter': fetch_twitter_trends(),
-        'news': fetch_news_trends()
-    }
-    
-    # Combine and weight trends
-    all_trends = []
-    for source, trends in sources.items():
-        all_trends.extend([(t, source) for t in trends])
-    
-    # Store in Redis with 6h expiration
-    redis_client.sadd(cache_key, *[t[0] for t in all_trends])
-    redis_client.expire(cache_key, 21600)
-    
-    return [t[0] for t in all_trends]
-
-def generate_thread_structure(topic: str, insights: List[str]) -> List[str]:
-    """Apply copywriting framework to raw insights"""
-    framework = random.choice(list(FRAMEWORKS.values()))
-    selected_insights = random.sample(insights, len(framework)-1)
-    
-    thread = []
-    for i, template in enumerate(framework):
-        thread.append(template.format(
-            hook=selected_insights[0],
-            problem=selected_insights[1],
-            insight=selected_insights[2],
-            solution=selected_insights[3],
-            cta=random.choice(CTAS),
-            count=len(selected_insights),
-            topic=topic
-        ))
-    
-    # Add viral elements
-    thread.insert
+            } catch (error) {
+                document.getElementById('threadContainer').innerHTML = `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
