@@ -123,7 +123,7 @@
     </div>
 
     <script>
-       async function generateThread() {
+      async function generateThread() {
     const topic = document.getElementById("topic").value;
     const subreddits = document.getElementById("random_subreddits").checked ? [] : document.getElementById("subreddits").value.split(',').map(s => s.trim());
     const keywords = document.getElementById("random_keywords").checked ? [] : document.getElementById("keywords").value.split(',').map(k => k.trim());
