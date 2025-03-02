@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS  # Import CORS
 import random
 import requests
 import os
@@ -8,26 +8,17 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Initialize Flask app
 app = Flask(__name__)
 
-# Configure CORS to allow all origins (for simplicity)
-# This is more permissive but will fix the immediate issue
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
-
-# Add CORS headers to all responses
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    response.headers["Access-Control-Max-Age"] = "3600"  # Cache preflight request for 1 hour
-    return response
-
-# Special handler for OPTIONS requests
-@app.route('/generate_thread', methods=['OPTIONS'])
-def options():
-    # Just return headers
-    return '', 204
+# Configure CORS properly
+CORS(app, resources={
+    r"/generate_thread": {
+        "origins": "*",  # Allow all origins
+        "methods": ["POST", "OPTIONS"],  # Allow POST and OPTIONS methods
+        "allow_headers": ["Content-Type"]  # Allow Content-Type header
+    }
+})
 
 # Topic database with diverse subjects
 TOPIC_DATABASE = {
@@ -84,6 +75,7 @@ def fetch_news_insights(topic):
         print(f"NewsAPI fetch error: {e}")
     return []
 
+# Route to generate Twitter threads
 @app.route('/generate_thread', methods=['POST'])
 def generate_thread():
     try:
@@ -127,7 +119,6 @@ def generate_thread():
             selected_insights = random.sample(
                 available_insights, 
                 min(thread_length, len(available_insights))
-            )
             
             # Format the thread
             thread = [f"{insight}" for insight in selected_insights]
@@ -140,6 +131,7 @@ def generate_thread():
         print(f"Error generating thread: {e}")
         return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
 
+# Run the Flask app
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('ENV', 'dev').lower() == 'dev'
