@@ -10,22 +10,24 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Configure CORS to allow requests from GitHub Pages and localhost
-allowed_origins = os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io,http://localhost:3000').split(',')
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": allowed_origins}})
+# Configure CORS to allow all origins (for simplicity)
+# This is more permissive but will fix the immediate issue
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
 
+# Add CORS headers to all responses
 @app.after_request
 def add_cors_headers(response):
-    """Ensure CORS headers are correctly added."""
-    origin = request.headers.get('Origin')
-    if origin and origin in allowed_origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
-    else:
-        response.headers["Access-Control-Allow-Origin"] = allowed_origins[0]
-    
+    response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Max-Age"] = "3600"  # Cache preflight request for 1 hour
     return response
+
+# Special handler for OPTIONS requests
+@app.route('/generate_thread', methods=['OPTIONS'])
+def options():
+    # Just return headers
+    return '', 204
 
 # Topic database with diverse subjects
 TOPIC_DATABASE = {
@@ -82,11 +84,8 @@ def fetch_news_insights(topic):
         print(f"NewsAPI fetch error: {e}")
     return []
 
-@app.route('/generate_thread', methods=['POST', 'OPTIONS'])
+@app.route('/generate_thread', methods=['POST'])
 def generate_thread():
-    if request.method == "OPTIONS":
-        return jsonify({"message": "CORS preflight successful"}), 200
-
     try:
         data = request.json
         topics = [t.strip() for t in data.get("topic", "").split(",") if t.strip()]
