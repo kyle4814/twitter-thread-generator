@@ -12,17 +12,16 @@ def fetch_reddit_posts(subreddit, keywords):
     headers = {"User-Agent": "ThreadGeneratorBot"}
     response = requests.get(REDDIT_API_URL.format(subreddit), headers=headers)
 
-    # Log the entire response to debug issues
     print(f"Fetching subreddit: {subreddit}")
     print(f"Response Status: {response.status_code}")
 
     if response.status_code != 200:
-        print(f"Error fetching subreddit {subreddit}: {response.text}")  # Log actual response error
+        print(f"Error fetching subreddit {subreddit}: {response.text}")
         return []
 
     try:
         response_json = response.json()
-        print(f"Full Response: {response_json}")  # Log full Reddit API response
+        print(f"Full Response from {subreddit}: {response_json}")  # Debugging
         posts = response_json.get("data", {}).get("children", [])
     except Exception as e:
         print(f"Error parsing JSON from {subreddit}: {e}")
@@ -31,6 +30,7 @@ def fetch_reddit_posts(subreddit, keywords):
     relevant_posts = []
     for post in posts:
         title = post["data"].get("title", "")
+        print(f"Found post: {title}")  # Debugging
         if any(keyword.lower() in title.lower() for keyword in keywords):
             relevant_posts.append(title)
 
