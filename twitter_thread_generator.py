@@ -18,15 +18,26 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configure CORS
+# ================== CORS CONFIG (MISSILE-LOCKED EDITION) ==================
 CORS(app, resources={
     r"/generate_thread": {
-        "origins": "*",
-        "methods": ["POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"],
-        "supports_credentials": True
+        "origins": ["https://kyle4844.github.io", "http://localhost:*"],
+        "methods": ["POST", "OPTIONS", "GET"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Length", "X-Request-ID"],
+        "supports_credentials": True,
+        "max_age": 86400  # 24-hour preflight cache
     }
 })
+
+# MANUAL OPTIONS HANDLER (Double-tap fix)
+@app.route('/generate_thread', methods=['OPTIONS'])
+def options_handler():
+    return '', 204, {
+        'Access-Control-Allow-Origin': 'https://kyle4844.github.io',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+    }
 
 # Initialize Redis
 redis_client = redis.Redis(
