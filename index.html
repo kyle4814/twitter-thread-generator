@@ -137,7 +137,22 @@ async function generateThread() {
     });
 
     const data = await response.json();
-    console.log("API Response:", data);
+    console.log("Corrected API Response:", data);
+
+    if (!data.threads || !Array.isArray(data.threads)) {
+        document.getElementById("output").innerHTML = "Error: Invalid API response.";
+        return;
+    }
+
+    let outputHtml = "";
+    data.threads.forEach((thread, index) => {
+        outputHtml += `<div style="border: 2px solid #00ffea; padding: 10px; margin-top: 10px; border-radius: 5px;">`;
+        outputHtml += `<h3 style="color: #00ffea;">Thread ${index + 1}</h3>`;
+        outputHtml += `<p>${thread.join("<br>")}</p>`;
+        outputHtml += `</div>`;
+    });
+
+    document.getElementById("output").innerHTML = outputHtml;
 }
 
     </script>
