@@ -1,10 +1,16 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+
+# Allow all origins (or specify GitHub Pages URL)
+CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io"]}}, supports_credentials=True)
+
 @app.route('/generate_thread', methods=['POST'])
 def generate_thread():
     try:
         data = request.json
         topic = data.get("topic", "Entrepreneurship")
-        subreddits = data.get("subreddits", ["technology", "business"])
-        keywords = data.get("keywords", ["AI", "automation", "startup"])
         num_threads = int(data.get("num_threads", 1))
         thread_length = int(data.get("thread_length", 5))
 
@@ -12,22 +18,15 @@ def generate_thread():
 
         threads = []
         for i in range(num_threads):
-            thread_posts = []
-
-            for subreddit in subreddits:
-                print(f"Fetching subreddit: {subreddit}")
-                posts = fetch_reddit_posts(subreddit, keywords)
-                if posts:
-                    thread_posts.extend(posts[:thread_length])
-
-            if not thread_posts:
-                thread_posts = [f"🔥 {topic} Insight {j+1}" for j in range(thread_length)]  # Fallback if no data found
-
-            threads.append(thread_posts)
+            thread = [f"🔥 {topic} Insight {j+1} (Thread {i+1})" for j in range(thread_length)]
+            threads.append(thread)
 
         print(f"Generated Threads: {threads}")  # Log generated output
         return jsonify({"threads": threads})
 
     except Exception as e:
-        print(f"Error generating thread: {e}")  # Log the error message
+        print(f"Error generating thread: {e}")
         return jsonify({"error": f"Internal Server Error: {e}"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
