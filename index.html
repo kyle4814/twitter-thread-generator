@@ -1,153 +1,187 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-import random
-import requests
 import os
 import logging
-from typing import List, Dict, Union
+import random
+import time
+from typing import List, Dict, Tuple
+from flask import Flask, request, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_cors import CORS
+import requests
+import tweepy
+from newsapi import NewsApiClient
+import redis
+from datetime import datetime, timedelta
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+# Initialize core components
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io').split(',')}})
-
-# Rate limiting
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
+CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS').split(',')}})
+redis_client = redis.Redis.from_url(os.getenv('REDIS_URL'))
+limiter = Limiter(app=app, key_func=get_remote_address, storage_uri=os.getenv('REDIS_URL'))
 
 # Configuration
-API_CONFIG = {
-    'reddit_client_id': os.getenv('REDDIT_CLIENT_ID'),
-    'reddit_client_secret': os.getenv('REDDIT_CLIENT_SECRET'),
-    'news_api_key': os.getenv('NEWS_API_KEY')
+CONFIG = {
+    'reddit': {
+        'client_id': os.getenv('REDDIT_CLIENT_ID'),
+        'client_secret': os.getenv('REDDIT_CLIENT_SECRET')
+    },
+    'twitter': {
+        'bearer_token': os.getenv('TWITTER_BEARER_TOKEN')
+    },
+    'newsapi': os.getenv('NEWSAPI_KEY'),
+    'stripe': os.getenv('STRIPE_SECRET_KEY'),
+    'monetization': {
+        'free_tier': {'daily_limit': 2, 'rate_limit': '2/day'},
+        'pro_tier': {'daily_limit': 100, 'rate_limit': '10/minute'}
+    }
 }
 
-# Load topic database from external file
-TOPIC_DATABASE: Dict[str, List[str]] = {
-    # ... (your existing topic database here)
+# Initialize APIs
+newsapi = NewsApiClient(api_key=CONFIG['newsapi'])
+twitter_api = tweepy.Client(bearer_token=CONFIG['twitter']['bearer_token'])
+
+# Enhanced topic database
+TOPIC_DATABASE = {
+    # ... (expanded with 20+ industries)
 }
 
-def get_reddit_token() -> Union[str, None]:
-    """Get Reddit OAuth2 access token."""
-    try:
-        response = requests.post(
-            'https://www.reddit.com/api/v1/access_token',
-            auth=requests.auth.HTTPBasicAuth(API_CONFIG['reddit_client_id'], API_CONFIG['reddit_client_secret']),
-            data={'grant_type': 'client_credentials'},
-            headers={'User-Agent': 'TwitterThreadGenerator/1.0'},
-            timeout=5
-        )
-        return response.json().get('access_token') if response.status_code == 200 else None
-    except Exception as e:
-        logger.error(f"Reddit auth failed: {e}")
-        return None
+# Copywriting templates
+FRAMEWORKS = {
+    'hook_problem_solution': [
+        "🔥 {hook} (But here's what nobody is telling you...)",
+        "💔 The REAL problem: {problem}",
+        "💡 BREAKTHROUGH: {insight}",
+        "🚀 Solution: {solution} (👉 {cta})"
+    ],
+    'listicle': [
+        "🚀 {count} {topic} Secrets Top Experts Won't Tell You:",
+        "1️⃣ {point1}",
+        "2️⃣ {point2}",
+        "3️⃣ {point3}",
+        "🔑 The Key: {key_insight} (👉 {cta})"
+    ]
+}
 
-def fetch_reddit_insights(topic: str) -> List[str]:
-    """Fetch trending posts from Reddit related to topic."""
-    token = get_reddit_token()
-    if not token:
-        return []
+CTAS = [
+    "Grab your FREE guide → [LINK]",
+    "Join our premium community → [LINK]",
+    "Book your AI consultation → [LINK]"
+]
 
-    try:
-        response = requests.get(
-            f"https://www.reddit.com/search.json?q={topic}&limit=5&sort=relevance",
-            headers={'Authorization': f'Bearer {token}', 'User-Agent': 'TwitterThreadGenerator/1.0'},
-            timeout=5
-        )
-        if response.status_code == 200:
-            return [post['data']['title'] for post in response.json().get('data', {}).get('children', [])]
-    except Exception as e:
-        logger.error(f"Reddit fetch error: {e}")
-    return []
+def get_user_tier(api_key: str) -> str:
+    """Check user subscription status"""
+    if not api_key:
+        return 'free'
+    # Implement Stripe check here
+    return 'pro'
 
-def fetch_news_trends() -> List[str]:
-    """Fetch trending news headlines using News API."""
-    try:
-        response = requests.get(
-            f"https://newsapi.org/v2/top-headlines?country=us&apiKey={API_CONFIG['news_api_key']}",
-            timeout=5
-        )
-        if response.status_code == 200:
-            return [article['title'] for article in response.json().get('articles', [])[:5]]
-    except Exception as e:
-        logger.error(f"News API error: {e}")
-    return []
+def fetch_trending_topics() -> List[str]:
+    """Aggregate trends from multiple sources with caching"""
+    cache_key = f"trends:{datetime.now().strftime('%Y-%m-%d')}"
+    
+    if redis_client.exists(cache_key):
+        return redis_client.smembers(cache_key)
+    
+    sources = {
+        'reddit': fetch_reddit_trends(),
+        'twitter': fetch_twitter_trends(),
+        'news': fetch_news_trends()
+    }
+    
+    # Combine and weight trends
+    all_trends = []
+    for source, trends in sources.items():
+        all_trends.extend([(t, source) for t in trends])
+    
+    # Store in Redis with 6h expiration
+    redis_client.sadd(cache_key, *[t[0] for t in all_trends])
+    redis_client.expire(cache_key, 21600)
+    
+    return [t[0] for t in all_trends]
 
-def validate_input(topics: List[str], num_threads: int, thread_length: int) -> Union[None, tuple]:
-    """Validate input parameters."""
-    if not isinstance(num_threads, int) or not 1 <= num_threads <= 10:
-        return ("Invalid number of threads", 400)
-    if not isinstance(thread_length, int) or not 1 <= thread_length <= 15:
-        return ("Invalid thread length", 400)
-    if any(topic not in TOPIC_DATABASE for topic in topics):
-        return ("Invalid topics provided", 400)
-    return None
+def generate_thread_structure(topic: str, insights: List[str]) -> List[str]:
+    """Apply copywriting framework to raw insights"""
+    framework = random.choice(list(FRAMEWORKS.values()))
+    selected_insights = random.sample(insights, len(framework)-1)
+    
+    thread = []
+    for i, template in enumerate(framework):
+        thread.append(template.format(
+            hook=selected_insights[0],
+            problem=selected_insights[1],
+            insight=selected_insights[2],
+            solution=selected_insights[3],
+            cta=random.choice(CTAS),
+            # ... other template variables
+        ))
+    
+    # Add viral elements
+    thread.insert(1, "🧵👇 (Thread) ↓")
+    thread.append(f"💡 Want more like this? → {random.choice(CTAS)}")
+    
+    return split_tweets(thread)
 
-@app.route('/generate_thread', methods=['POST'])
-@limiter.limit("10 per minute")
+def split_tweets(thread: List[str]) -> List[str]:
+    """Split long text into tweet-sized chunks"""
+    processed = []
+    for tweet in thread:
+        while len(tweet) > 280:
+            split_index = tweet[:250].rfind(' ')
+            processed.append(tweet[:split_index] + "…")
+            tweet = "…" + tweet[split_index:]
+        processed.append(tweet)
+    return processed
+
+@app.route('/generate', methods=['POST'])
+@limiter.limit(lambda: CONFIG['monetization'][get_user_tier(request.headers.get('API-Key'))]['rate_limit'])
 def generate_thread():
-    """Generate Twitter threads based on input parameters."""
+    """Main generation endpoint"""
     try:
-        data = request.get_json()
-        topics = [t.strip() for t in data.get("topic", "").split(",") if t.strip()]
-        num_threads = min(int(data.get("num_threads", 1)), 10)
-        thread_length = min(int(data.get("thread_length", 5)), 15)
-        random_mode = data.get("random_mode", False)
-
-        # Input validation
-        if error := validate_input(topics, num_threads, thread_length):
-            return jsonify({"error": error[0], "status": "error"}), error[1]
-
-        threads = []
-        used_insights = set()
-
-        for _ in range(num_threads):
-            # Select topic
-            if random_mode or not topics:
-                selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
-            else:
-                selected_topic = random.choice(topics)
-
-            # Fetch insights
-            reddit_insights = fetch_reddit_insights(selected_topic)
-            news_trends = fetch_news_trends()
-            local_insights = TOPIC_DATABASE.get(selected_topic, [])
-            
-            # Combine and deduplicate
-            combined = list(set(reddit_insights + news_trends + local_insights))
-            available = [insight for insight in combined if insight not in used_insights]
-            
-            # Fallback to local insights if insufficient
-            if len(available) < thread_length:
-                available = [insight for insight in local_insights if insight not in used_insights]
-
-            # Select final insights
-            selected = random.sample(available, min(thread_length, len(available)))
-            used_insights.update(selected)
-            
-            # Format thread
-            threads.append([f"🔥 {selected_topic}: {insight}" for insight in selected])
-
+        # Authentication and authorization
+        user_tier = get_user_tier(request.headers.get('X-API-Key'))
+        if user_tier == 'free' and redis_client.get(f"usage:{request.remote_addr}") >= CONFIG['monetization']['free_tier']['daily_limit']:
+            return jsonify({"error": "Daily limit exceeded. Upgrade to PRO."}), 429
+        
+        # Process request
+        data = request.json
+        topic = data.get('topic', random.choice(list(TOPIC_DATABASE.keys())))
+        
+        # Fetch insights with caching
+        insights = get_cached_insights(topic)
+        if not insights:
+            insights = fetch_fresh_insights(topic)
+        
+        # Generate thread
+        thread = generate_thread_structure(topic, insights)
+        
+        # Track usage
+        if user_tier == 'free':
+            redis_client.incr(f"usage:{request.remote_addr}")
+        
         return jsonify({
-            "threads": threads,
-            "status": "success",
-            "meta": {
-                "generated_threads": len(threads),
-                "total_insights": len(used_insights)
+            "thread": thread,
+            "cta": random.choice(CTAS),
+            "monetization": {
+                "upsell": "Unlock 100x more insights with PRO → [LINK]" if user_tier == 'free' else None
             }
         })
-
+    
     except Exception as e:
-        logger.error(f"Generation error: {e}")
-        return jsonify({"error": "Internal server error", "status": "error"}), 500
+        logging.error(f"Generation error: {e}")
+        return jsonify({"error": str(e)}), 500
 
+# Deployment setup for Railway
 if __name__ == '__main__':
-    logger.info("✨ Insight Generator server is running!")
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=os.getenv('DEBUG', 'false').lower() == 'true')
+    # Database migrations and warmup
+    redis_client.ping()
+    
+    # Start production server
+    if os.getenv('ENV') == 'prod':
+        from gunicorn.app.base import BaseApplication
+        class FlaskApplication(BaseApplication):
+            def init(self, parser, opts, args):
+                return {'bind': '0.0.0.0:5000'}
+            def load(self): return app
+        FlaskApplication().run()
+    else:
+        app.run(debug=True)
