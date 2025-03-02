@@ -8,19 +8,15 @@ CORS(app)
 def generate_thread():
     data = request.json
     topic = data.get("topic", "Entrepreneurship")
+    num_threads = int(data.get("num_threads", 1))
+    thread_length = int(data.get("thread_length", 5))
+    sections = int(data.get("sections", 1))
 
-    # Ensure valid input
-    if not topic:
-        return jsonify({"error": "Missing required parameters"}), 400
-
-    # Example thread generation
-    threads = [[
-        f"🔥 {topic} Insight 1",
-        f"🔥 {topic} Insight 2",
-        f"🔥 {topic} Insight 3",
-        f"🔥 {topic} Insight 4",
-        f"🔥 {topic} Insight 5"
-    ]]
+    # Ensure we generate multiple threads
+    threads = []
+    for _ in range(num_threads):
+        thread = [f"🔥 {topic} Insight {i+1}" for i in range(thread_length)]
+        threads.append(thread)
 
     return jsonify({"threads": threads})
 
