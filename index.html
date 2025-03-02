@@ -48,8 +48,8 @@
       `;
 
       try {
-        // IMPORTANT: Replace this URL with the actual domain of your deployed Flask app
-        const response = await fetch('https://my-flask-app-domain.onrender.com/generate_thread', {
+        // Use your Railway URL here
+        const response = await fetch('https://web-production-d52f.up.railway.app/generate_thread', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -95,4 +95,11 @@
       } catch (error) {
         document.getElementById('threadContainer').innerHTML = `
           <div class="thread">
-            <p>⚠️ Network Error: ${error.
+            <p>⚠️ Network Error: ${error.message}</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
