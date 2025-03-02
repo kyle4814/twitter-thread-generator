@@ -54,26 +54,15 @@ def generate_thread():
             if random_mode or not topic:
                 selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
             else:
+                # If the user-entered topic isn't in the database, pick a random one
                 selected_topic = topic if topic in TOPIC_DATABASE else random.choice(list(TOPIC_DATABASE.keys()))
 
-            # Select unique insights for this thread
-            available_insights = [insight for insight in TOPIC_DATABASE[selected_topic] if insight not in used_insights]
+            # Filter out insights that were already used in previous threads
+            available_insights = [
+                insight for insight in TOPIC_DATABASE[selected_topic] 
+                if insight not in used_insights
+            ]
 
+            # If we don't have enough fresh insights, allow repeats
             if len(available_insights) < thread_length:
-                available_insights = TOPIC_DATABASE[selected_topic]
-
-            selected_insights = random.sample(available_insights, min(thread_length, len(available_insights)))
-            thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
-            used_insights.update(selected_insights)
-            threads.append(thread)
-
-        print(f"Generated {len(threads)} threads successfully")
-        return jsonify({"threads": threads, "status": "success"})
-
-    except Exception as e:
-        print(f"Error generating thread: {e}")
-        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
-
-if __name__ == '__main__':
-    print("✨ Insight Generator server is running!")
-    app.run(debug=True)
+                a
