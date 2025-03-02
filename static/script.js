@@ -11,7 +11,12 @@ async function generateThread() {
     `;
 
     try {
-        const response = await fetch("https://twitter-generator-api.up.railway.app/generate_thread", {
+        // Use window.location to determine if we're running locally or on GitHub Pages
+        const apiUrl = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5000/generate_thread'
+            : 'https://twitter-generator-api.up.railway.app/generate_thread';
+
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -20,6 +25,8 @@ async function generateThread() {
                 thread_length: threadLength,
                 random_mode: randomMode
             }),
+            // Include credentials for cookies if needed
+            credentials: 'same-origin'
         });
 
         const data = await response.json();
@@ -36,7 +43,7 @@ async function generateThread() {
         let threadsHTML = '';
         data.threads.forEach((thread, index) => {
             let insightsHTML = '';
-            thread.forEach(insight => {
+            thread.insights.forEach(insight => {
                 insightsHTML += `
                     <div class="insight">
                         <p>✨ ${insight}</p>
@@ -45,8 +52,11 @@ async function generateThread() {
             });
             threadsHTML += `
                 <div class="thread">
-                    <h3>🔥 Thread ${index + 1}</h3>
+                    <h3>🔥 Thread ${index + 1}: ${thread.topic}</h3>
                     ${insightsHTML}
+                    <div class="actions">
+                        <button onclick="copyThread(${index})">Copy Thread</button>
+                    </div>
                 </div>
             `;
         });
@@ -56,7 +66,47 @@ async function generateThread() {
         document.getElementById('threadContainer').innerHTML = `
             <div class="thread">
                 <p>⚠️ Network Error: ${error.message}</p>
+                <p>Please check your connection and try again.</p>
             </div>
         `;
     }
 }
+
+// Function to copy thread content to clipboard
+function copyThread(threadIndex) {
+    const threadElement = document.querySelectorAll('.thread')[threadIndex];
+    const insights = threadElement.querySelectorAll('.insight p');
+    
+    let threadText = '';
+    insights.forEach((insight, i) => {
+        // Remove the ✨ emoji from the text
+        const text = insight.textContent.replace('✨ ', '');
+        threadText += `${i+1}/ ${text}\n\n`;
+    });
+    
+    // Add final tweet
+    threadText += `${insights.length+1}/ Thanks for reading! If you found this thread valuable, please:\n• Like\n• Retweet\n• Follow for more content like this\n\n`;
+    
+    navigator.clipboard.writeText(threadText)
+        .then(() => {
+            alert('Thread copied to clipboard!');
+        })
+        .catch(err => {
+            console.error('Error copying text: ', err);
+            alert('Failed to copy. Please try again.');
+        });
+}
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if there are any saved preferences
+    const savedTopic = localStorage.getItem('preferredTopic');
+    if (savedTopic) {
+        document.getElementById('topic').value = savedTopic;
+    }
+    
+    // Add event listeners for saving preferences
+    document.getElementById('topic').addEventListener('change', function() {
+        localStorage.setItem('preferredTopic', this.value);
+    });
+});
