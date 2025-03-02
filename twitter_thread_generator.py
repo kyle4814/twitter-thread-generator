@@ -12,15 +12,17 @@ def generate_thread():
         num_threads = int(data.get("num_threads", 1))
         thread_length = int(data.get("thread_length", 5))
 
-        print(f"Request Received: {data}")  # Debugging
+        print(f"Request Received: {data}")  # Debugging log
 
-        threads = []
+        # Force correct list structure for multiple threads
+        threads = [[] for _ in range(num_threads)]  
+
         for i in range(num_threads):
             thread = [f"🔥 {topic} Insight {j+1} (Thread {i+1})" for j in range(thread_length)]
-            threads.append(thread)
+            threads[i] = thread  # Correctly assign each thread to its index
 
         print(f"Generated {len(threads)} threads")  # Debugging log
-        return jsonify({"threads": threads})  # Ensure it's a list, not an object
+        return jsonify({"threads": threads})
 
     except Exception as e:
         print(f"Error generating thread: {e}")
