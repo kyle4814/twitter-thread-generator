@@ -11,10 +11,16 @@ async function generateThread() {
     `;
 
     try {
-        // Use window.location to determine if we're running locally or on GitHub Pages
-        const apiUrl = window.location.hostname === 'localhost' 
-            ? 'http://localhost:5000/generate_thread'
-            : 'https://twitter-generator-api.up.railway.app/generate_thread';
+        // Use the Railway API endpoint
+        const apiUrl = 'https://twitter-generator-api.up.railway.app/generate_thread';
+
+        console.log('Sending request to:', apiUrl);
+        console.log('Request data:', {
+            topic: topicInput,
+            num_threads: numThreads,
+            thread_length: threadLength,
+            random_mode: randomMode
+        });
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -25,11 +31,13 @@ async function generateThread() {
                 thread_length: threadLength,
                 random_mode: randomMode
             }),
-            // Include credentials for cookies if needed
-            credentials: 'same-origin'
+            // Important: Do not include credentials for cross-origin requests with '*'
+            mode: 'cors'
         });
 
+        console.log('Response status:', response.status);
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (data.status === 'error' || !data.threads) {
             document.getElementById('threadContainer').innerHTML = `
@@ -63,10 +71,12 @@ async function generateThread() {
 
         document.getElementById('threadContainer').innerHTML = threadsHTML;
     } catch (error) {
+        console.error('Error:', error);
         document.getElementById('threadContainer').innerHTML = `
             <div class="thread">
                 <p>⚠️ Network Error: ${error.message}</p>
                 <p>Please check your connection and try again.</p>
+                <p>Details: ${error.toString()}</p>
             </div>
         `;
     }
