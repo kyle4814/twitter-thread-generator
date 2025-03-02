@@ -1,100 +1,37 @@
-body {
-    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=1200');
-    background-size: cover;
-    background-attachment: fixed;
-    background-position: center;
-    color: white;
-    font-family: 'Arial', sans-serif;
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Twitter Thread Generator</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 AI Twitter Thread Generator</h1>
+        <p>Enter your preferences and let AI generate high-performing Twitter threads for you.</p>
+        
+        <div class="card">
+            <label for="topic">Topic:</label>
+            <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business)">
+            
+            <label for="numThreads">Number of Threads:</label>
+            <input type="number" id="numThreads" min="1" max="10" value="1">
+            
+            <label for="threadLength">Insights per Thread:</label>
+            <input type="number" id="threadLength" min="1" max="8" value="5">
+            
+            <div class="checkbox-container">
+                <input type="checkbox" id="randomMode">
+                <label for="randomMode">Enable Random Mode</label>
+            </div>
+            
+            <button onclick="generateThread()">Generate Thread</button>
+        </div>
+        
+        <div id="threadContainer" class="thread-container"></div>
+    </div>
 
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-}
-
-.card {
-    background-color: rgba(13, 17, 43, 0.8);
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 20px;
-    width: 100%;
-    box-shadow: 0 0 20px rgba(103, 128, 255, 0.5);
-    text-align: center;
-}
-
-h1 {
-    color: #7B68EE;
-    text-align: center;
-    font-size: 2.5rem;
-    margin-bottom: 30px;
-    text-shadow: 0 0 10px rgba(123, 104, 238, 0.5);
-}
-
-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: #9DB4FF;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 20px;
-    border-radius: 8px;
-    border: 2px solid #3D5AFE;
-    background-color: rgba(30, 40, 70, 0.8);
-    color: white;
-    font-size: 16px;
-}
-
-button {
-    background: linear-gradient(45deg, #3D5AFE, #7B68EE);
-    color: white;
-    border: none;
-    padding: 12px 25px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    width: 100%;
-    margin-top: 10px;
-    transition: all 0.3s ease;
-}
-
-button:hover {
-    background: linear-gradient(45deg, #7B68EE, #3D5AFE);
-    transform: translateY(-2px);
-    box-shadow: 0 7px 14px rgba(59, 43, 91, 0.3);
-}
-
-.thread-container {
-    margin-top: 30px;
-    width: 100%;
-}
-
-.thread {
-    background-color: rgba(25, 32, 71, 0.7);
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-left: 4px solid #7B68EE;
-}
-
-.insight {
-    background-color: rgba(41, 53, 116, 0.5);
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 8px;
-    text-align: left;
-    border-left: 3px solid #3D5AFE;
-}
+    <script src="static/script.js"></script>
+</body>
+</html>
