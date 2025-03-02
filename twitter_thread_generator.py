@@ -10,12 +10,11 @@ def generate_thread():
     topic = data.get("topic", "Entrepreneurship")
     num_threads = int(data.get("num_threads", 1))
     thread_length = int(data.get("thread_length", 5))
-    sections = int(data.get("sections", 1))
 
-    # Ensure we generate multiple threads
+    # Ensure multiple threads are generated
     threads = []
-    for _ in range(num_threads):
-        thread = [f"🔥 {topic} Insight {i+1}" for i in range(thread_length)]
+    for i in range(num_threads):
+        thread = [f"🔥 {topic} Insight {j+1} (Thread {i+1})" for j in range(thread_length)]
         threads.append(thread)
 
     return jsonify({"threads": threads})
