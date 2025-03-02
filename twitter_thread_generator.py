@@ -1,38 +1,33 @@
-import requests
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
-
-REDDIT_API_URL = "https://www.reddit.com/r/{}/top.json?limit=5"
-
-def fetch_reddit_posts(subreddit, keywords):
-    """Fetch top Reddit posts and filter by keywords."""
-    headers = {"User-Agent": "ThreadGeneratorBot"}
-    response = requests.get(REDDIT_API_URL.format(subreddit), headers=headers)
-
-    print(f"Fetching subreddit: {subreddit}")
-    print(f"Response Status: {response.status_code}")
-
-    if response.status_code != 200:
-        print(f"Error fetching subreddit {subreddit}: {response.text}")
-        return []
-
+@app.route('/generate_thread', methods=['POST'])
+def generate_thread():
     try:
-        response_json = response.json()
-        print(f"Full Response from {subreddit}: {response_json}")  # Debugging
-        posts = response_json.get("data", {}).get("children", [])
+        data = request.json
+        topic = data.get("topic", "Entrepreneurship")
+        subreddits = data.get("subreddits", ["technology", "business"])
+        keywords = data.get("keywords", ["AI", "automation", "startup"])
+        num_threads = int(data.get("num_threads", 1))
+        thread_length = int(data.get("thread_length", 5))
+
+        print(f"Request Received: {data}")  # Log incoming request
+
+        threads = []
+        for i in range(num_threads):
+            thread_posts = []
+
+            for subreddit in subreddits:
+                print(f"Fetching subreddit: {subreddit}")
+                posts = fetch_reddit_posts(subreddit, keywords)
+                if posts:
+                    thread_posts.extend(posts[:thread_length])
+
+            if not thread_posts:
+                thread_posts = [f"🔥 {topic} Insight {j+1}" for j in range(thread_length)]  # Fallback if no data found
+
+            threads.append(thread_posts)
+
+        print(f"Generated Threads: {threads}")  # Log generated output
+        return jsonify({"threads": threads})
+
     except Exception as e:
-        print(f"Error parsing JSON from {subreddit}: {e}")
-        return []
-
-    relevant_posts = []
-    for post in posts:
-        title = post["data"].get("title", "")
-        print(f"Found post: {title}")  # Debugging
-        if any(keyword.lower() in title.lower() for keyword in keywords):
-            relevant_posts.append(title)
-
-    print(f"Fetched {len(relevant_posts)} matching posts from {subreddit} with keywords {keywords}")
-    return relevant_posts
+        print(f"Error generating thread: {e}")  # Log the error message
+        return jsonify({"error": f"Internal Server Error: {e}"}), 500
