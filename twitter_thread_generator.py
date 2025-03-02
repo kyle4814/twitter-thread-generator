@@ -36,9 +36,9 @@ def options_handler():
 
 # Initialize Redis
 redis_client = redis.Redis(
-    host=os.getenv('REDIS_HOST', 'localhost'),
+    host=os.getenv('REDIS_HOST', 'redis'),  # Railway uses 'redis' hostname
     port=os.getenv('REDIS_PORT', 6379),
-    db=0
+    password=os.getenv('REDIS_PASSWORD', '')  # Add this line
 )
 
 # Configure rate limiting
