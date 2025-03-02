@@ -29,10 +29,13 @@
   <label for="randomMode">Random Mode:</label>
   <input type="checkbox" id="randomMode" />
 
+  <!-- The button calls generateThread() when clicked -->
   <button onclick="generateThread()">Generate Thread</button>
 
+  <!-- Container to display results -->
   <div id="threadContainer"></div>
 
+  <!-- Include your script at the END of the body -->
   <script>
     async function generateThread() {
       const topicInput = document.getElementById('topic').value.trim();
@@ -48,7 +51,7 @@
       `;
 
       try {
-        // Use your Railway URL here
+        // Make sure this URL points to your actual deployed Flask app:
         const response = await fetch('https://web-production-d52f.up.railway.app/generate_thread', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -72,7 +75,6 @@
         }
 
         let threadsHTML = '';
-
         data.threads.forEach((thread, index) => {
           let insightsHTML = '';
           thread.forEach(insight => {
