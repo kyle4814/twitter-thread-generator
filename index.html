@@ -1,61 +1,102 @@
-async function generateThread() {
-    const topicInput = document.getElementById('topic').value.trim();
-    const numThreads = parseInt(document.getElementById('numThreads').value) || 1;
-    const threadLength = parseInt(document.getElementById('threadLength').value) || 5;
-    const randomMode = document.getElementById('randomMode').checked;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Thread Generator</title>
+  <style>
+    .thread {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    .insight {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Twitter Thread Generator</h1>
 
-    // Display loading message
-    document.getElementById('threadContainer').innerHTML = '<div class="thread"><p>🚀 Generating insights...</p></div>';
+  <label for="topic">Topic:</label>
+  <input type="text" id="topic" placeholder="Enter a topic" />
 
-    try {
-        const response = await fetch('/generate_thread', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                topic: topicInput,
-                num_threads: numThreads,
-                thread_length: threadLength,
-                random_mode: randomMode
-            }),
+  <label for="numThreads">Number of Threads:</label>
+  <input type="number" id="numThreads" value="1" min="1" max="10" />
+
+  <label for="threadLength">Insights per Thread:</label>
+  <input type="number" id="threadLength" value="5" min="1" max="8" />
+
+  <label for="randomMode">Random Mode:</label>
+  <input type="checkbox" id="randomMode" />
+
+  <button onclick="generateThread()">Generate Thread</button>
+
+  <div id="threadContainer"></div>
+
+  <script>
+    async function generateThread() {
+      const topicInput = document.getElementById('topic').value.trim();
+      const numThreads = parseInt(document.getElementById('numThreads').value) || 1;
+      const threadLength = parseInt(document.getElementById('threadLength').value) || 5;
+      const randomMode = document.getElementById('randomMode').checked;
+
+      // Display loading message
+      document.getElementById('threadContainer').innerHTML = `
+        <div class="thread">
+          <p>🚀 Generating insights...</p>
+        </div>
+      `;
+
+      try {
+        // IMPORTANT: Replace with your actual Flask server URL
+        const response = await fetch('https://kyle4814.github.io/twitter-thread-generator/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: topicInput,
+            num_threads: numThreads,
+            thread_length: threadLength,
+            random_mode: randomMode
+          }),
         });
 
         const data = await response.json();
 
         if (data.status === 'error' || !data.threads) {
-            document.getElementById('threadContainer').innerHTML = `
-                <div class="thread">
-                    <p>⚠️ Error: ${data.error || "Unexpected server response."}</p>
-                </div>
-            `;
-            return;
+          document.getElementById('threadContainer').innerHTML = `
+            <div class="thread">
+              <p>⚠️ Error: ${data.error || "Unexpected server response."}</p>
+            </div>
+          `;
+          return;
         }
 
         let threadsHTML = '';
 
         data.threads.forEach((thread, index) => {
-            let insightsHTML = '';
-            thread.forEach(insight => {
-                insightsHTML += `
-                    <div class="insight">
-                        <p>✨ ${insight}</p>
-                    </div>
-                `;
-            });
-            threadsHTML += `
-                <div class="thread">
-                    <h3>🔥 Thread ${index + 1}</h3>
-                    ${insightsHTML}
-                </div>
+          let insightsHTML = '';
+          thread.forEach(insight => {
+            insightsHTML += `
+              <div class="insight">
+                <p>✨ ${insight}</p>
+              </div>
             `;
+          });
+          threadsHTML += `
+            <div class="thread">
+              <h3>🔥 Thread ${index + 1}</h3>
+              ${insightsHTML}
+            </div>
+          `;
         });
 
         document.getElementById('threadContainer').innerHTML = threadsHTML;
 
-    } catch (error) {
+      } catch (error) {
         document.getElementById('threadContainer').innerHTML = `
-            <div class="thread">
-                <p>⚠️ Network Error: ${error.message}</p>
-            </div>
+          <div class="thread">
+            <p>⚠️ Network Error: ${error.message}</p>
+          </div>
         `;
-    }
-}
+      }
+ 
