@@ -13,16 +13,22 @@ def fetch_reddit_posts(subreddit, keywords):
     response = requests.get(REDDIT_API_URL.format(subreddit), headers=headers)
 
     if response.status_code != 200:
+        print(f"Error fetching subreddit {subreddit}: {response.status_code}")
         return []
 
-    posts = response.json().get("data", {}).get("children", [])
-    relevant_posts = []
+    try:
+        posts = response.json().get("data", {}).get("children", [])
+    except Exception as e:
+        print(f"Error parsing JSON from {subreddit}: {e}")
+        return []
 
+    relevant_posts = []
     for post in posts:
         title = post["data"].get("title", "")
         if any(keyword.lower() in title.lower() for keyword in keywords):
             relevant_posts.append(title)
 
+    print(f"Fetched {len(relevant_posts)} posts from {subreddit} matching keywords {keywords}")
     return relevant_posts
 
 @app.route('/generate_thread', methods=['POST'])
@@ -40,7 +46,8 @@ def generate_thread():
 
         for subreddit in subreddits:
             posts = fetch_reddit_posts(subreddit, keywords)
-            thread_posts.extend(posts[:thread_length])
+            if posts:
+                thread_posts.extend(posts[:thread_length])
 
         if not thread_posts:
             thread_posts = [f"🔥 {topic} Insight {j+1}" for j in range(thread_length)]  # Fallback if no data found
