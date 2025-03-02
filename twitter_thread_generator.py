@@ -2,36 +2,48 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import random
 import requests
-import os
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io').split(',')}})
+CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io", "*"]}}, supports_credentials=True)
 
-# ✅ Topic Database with balanced variety
+# Expanded topic database with diverse subjects
 TOPIC_DATABASE = {
     "AI": [
-        "🚀 AI is taking over. Here’s how you can profit before it’s too late!",
-        "🤖 Neural networks now predict consumer behavior with 87% accuracy!",
+        "AI-powered automation saves businesses millions annually.",
+        "Neural networks can now predict consumer behavior with 87% accuracy.",
+        "GPT-4 has revolutionized content creation for businesses worldwide.",
+        "The ethical implications of AI decision-making in healthcare settings.",
+    ],
+    "Digital Marketing": [
+        "SEO is still the #1 driver of free organic traffic for 76% of businesses.",
+        "Email marketing generates $42 for every $1 spent on average.",
+    ],
+    "Sports": [
+        "Michael Jordan's mindset: How psychological preparation creates champions.",
+        "Recovery science is revolutionizing athletic performance standards.",
+    ],
+    "History": [
+        "The economic factors that contributed to the fall of the Roman Empire.",
+        "Archaeological evidence suggests ancient Egyptians used electricity.",
     ],
     "Business": [
-        "💰 Recession-proof business models thriving right now! Don’t miss out!",
-        "📈 How storytelling creates deep emotional connections with customers!",
-    ],
-    "Finance": [
-        "📊 The ultimate guide to wealth preservation during recessions!",
-        "📉 Why 90% of retail traders fail (and how to be in the 10%)",
-    ],
+        "Problem-solution fit: Why the best businesses solve painful problems.",
+        "Recession-proof business models thriving in economic downturns.",
+    ]
 }
 
-# ✅ Function to fetch data from external APIs
-def fetch_reddit_trends():
-    """Fetch top Reddit posts dynamically"""
+# Function to fetch data from Reddit API
+def fetch_reddit_insights(topic):
     headers = {"User-Agent": "TwitterThreadGenerator/1.0"}
+    url = f"https://www.reddit.com/r/{topic}/top.json?limit=5"
     try:
-        response = requests.get('https://www.reddit.com/r/popular/top.json?limit=5', headers=headers, timeout=5)
-        return [post["data"]["title"] for post in response.json().get("data", {}).get("children", [])]
-    except Exception:
-        return []
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            posts = response.json().get("data", {}).get("children", [])
+            return [post["data"]["title"] for post in posts][:5]
+    except Exception as e:
+        print(f"Reddit fetch error: {e}")
+    return []
 
 @app.route('/generate_thread', methods=['POST'])
 def generate_thread():
@@ -46,15 +58,18 @@ def generate_thread():
         used_insights = set()
 
         for _ in range(num_threads):
-            selected_topic = random.choice(list(TOPIC_DATABASE.keys())) if random_mode else random.choice(topics) if topics else "AI"
+            if random_mode or not topics:
+                selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
+            else:
+                selected_topic = random.choice(topics) if topics else random.choice(list(TOPIC_DATABASE.keys()))
 
-            insights = fetch_reddit_trends() or TOPIC_DATABASE.get(selected_topic, [])
-            insights = [insight for insight in insights if insight not in used_insights]
+            available_insights = fetch_reddit_insights(selected_topic) or TOPIC_DATABASE.get(selected_topic, [])
+            available_insights = [insight for insight in available_insights if insight not in used_insights]
 
-            if len(insights) < thread_length:
-                insights = TOPIC_DATABASE[selected_topic]
+            if len(available_insights) < thread_length:
+                available_insights = TOPIC_DATABASE[selected_topic]
 
-            selected_insights = random.sample(insights, min(thread_length, len(insights)))
+            selected_insights = random.sample(available_insights, min(thread_length, len(available_insights)))
             thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
             used_insights.update(selected_insights)
             threads.append(thread)
@@ -62,7 +77,9 @@ def generate_thread():
         return jsonify({"threads": threads, "status": "success"})
 
     except Exception as e:
-        return jsonify({"error": str(e), "status": "error"}), 500
+        print(f"Error generating thread: {e}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
 
 if __name__ == '__main__':
+    print("✨ Insight Generator server is running!")
     app.run(host='0.0.0.0', port=5000, debug=True)
