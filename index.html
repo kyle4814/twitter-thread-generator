@@ -6,154 +6,99 @@
     <title>AI Twitter Thread Generator</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
             text-align: center;
-            background: url('https://wallpapercave.com/wp/wp5757756.jpg') no-repeat center center fixed;
+            background: url('https://wallpapercave.com/wp/wp7152934.jpg') no-repeat center center fixed;
             background-size: cover;
             color: #00ffea;
-            padding: 30px;
         }
         .container {
-            max-width: 600px;
+            width: 50%;
             margin: auto;
-            background: rgba(0, 0, 0, 0.85);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 0px 20px rgba(0, 255, 234, 0.6);
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 0 20px #00ffea;
         }
-        textarea, input, select, button {
+        h1 {
+            color: #ff007f;
+        }
+        input, textarea, button {
             width: 100%;
-            padding: 10px;
             margin-top: 10px;
+            padding: 10px;
             border: 1px solid #00ffea;
             border-radius: 5px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ffea;
+            background: black;
+            color: white;
         }
         button {
-            background-color: #00ffea;
-            color: black;
-            font-size: 16px;
             cursor: pointer;
-            font-weight: bold;
+            background: #ff007f;
+            font-size: 18px;
         }
-        button:hover {
-            background-color: #008b8b;
-        }
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-        }
-        #output {
+        .output {
             margin-top: 20px;
-            white-space: pre-wrap;
             text-align: left;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #00ffea;
-        }
-        .info-section {
-            margin-top: 20px;
-            background: rgba(0, 0, 0, 0.85);
             padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px rgba(0, 255, 234, 0.5);
+            border: 1px solid #00ffea;
+            border-radius: 5px;
+            background: black;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>AI Twitter Thread Generator</h1>
+        <h1>🔥 AI Twitter Thread Generator</h1>
         <p>Enter your preferences and get a unique Twitter thread instantly!</p>
-        
-        <input type="text" id="topic" placeholder="Enter topic (e.g., AI Business)">
-        
-        <div class="checkbox-group">
-            <textarea id="subreddits" placeholder="Enter subreddits (comma-separated)"></textarea>
-            <label><input type="checkbox" id="random_subreddits"> Random</label>
-        </div>
-        
-        <div class="checkbox-group">
-            <input type="text" id="keywords" placeholder="Enter keywords (comma-separated)">
-            <label><input type="checkbox" id="random_keywords"> Random</label>
-        </div>
-        
-        <div class="checkbox-group">
-            <textarea id="description" placeholder="Enter description of what you're looking for"></textarea>
-            <label><input type="checkbox" id="random_description"> Random</label>
-        </div>
-        
-        <label>Number of Threads:</label>
-        <input type="number" id="num_threads" min="1" value="1">
-        
-        <label>Thread Length (tweets per section):</label>
-        <input type="number" id="thread_length" min="1" value="5">
-        
-        <label>Number of Sections:</label>
-        <input type="number" id="sections" min="1" value="1">
-        
-        <label><input type="checkbox" id="random_search"> Random Search (Self-Seeking Mode)</label>
-        
+
+        <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business)">
+        <input type="number" id="num_threads" placeholder="Number of Threads" value="1">
+        <input type="number" id="thread_length" placeholder="Thread Length (tweets per section)" value="5">
+
+        <label>
+            <input type="checkbox" id="random_mode"> Random Search (AI Self-Seeking Mode)
+        </label>
+
         <button onclick="generateThread()">Generate Thread</button>
-        
-        <div id="output"></div>
-        <button onclick="copyThread()" style="display: none;" id="copyBtn">Copy Thread</button>
-    </div>
-    
-    <div class="info-section">
-        <h2>What is this tool?</h2>
-        <p>This AI-powered tool helps you generate high-quality Twitter threads instantly. Whether you need engaging content for your business, AI-related topics, or general discussions, this generator pulls from various sources to craft compelling threads.</p>
-        
-        <h3>How to Use:</h3>
-        <ul>
-            <li>Enter a **topic** or leave it blank for general ideas.</li>
-            <li>Provide **subreddits, keywords, or descriptions** to refine the content, or check "Random" for AI-selected results.</li>
-            <li>Choose how many **threads, tweets per section, and sections** you want.</li>
-            <li>Click **Generate Thread** to create a unique Twitter thread.</li>
-            <li>Copy & paste the output directly to Twitter.</li>
-        </ul>
-        <p>Make your Twitter presence **stand out in 2077! 🚀**</p>
+        <div id="output" class="output"></div>
+
+        <h2>🛠 How to Use This Tool</h2>
+        <p>Enter a topic and select how many Twitter threads you want. If you enable "Random Search", the AI will automatically select trending insights for you.</p>
     </div>
 
     <script>
-async function generateThread() {
-    const response = await fetch("https://web-production-fe14e.up.railway.app/generate_thread", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        mode: "cors",
-        body: JSON.stringify({
-            topic: document.getElementById("topic").value,
-            num_threads: parseInt(document.getElementById("num_threads").value),
-            thread_length: parseInt(document.getElementById("thread_length").value)
-        })
-    });
+        async function generateThread() {
+            const response = await fetch("https://web-production-fe14e.up.railway.app/generate_thread", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                mode: "cors",
+                body: JSON.stringify({
+                    topic: document.getElementById("topic").value,
+                    num_threads: parseInt(document.getElementById("num_threads").value),
+                    thread_length: parseInt(document.getElementById("thread_length").value),
+                    random_mode: document.getElementById("random_mode").checked
+                })
+            });
 
-    const data = await response.json();
-    console.log("Updated API Response:", data);
+            const data = await response.json();
+            console.log("Updated API Response:", data);
 
-    if (!data.threads || !Array.isArray(data.threads)) {
-        document.getElementById("output").innerHTML = "Error: Invalid API response.";
-        return;
-    }
+            if (!data.threads || !Array.isArray(data.threads)) {
+                document.getElementById("output").innerHTML = "Error: Invalid API response.";
+                return;
+            }
 
-    let outputHtml = "";
-    data.threads.forEach((thread, index) => {
-        outputHtml += `<div style="border: 2px solid #00ffea; padding: 10px; margin-top: 10px; border-radius: 5px;">`;
-        outputHtml += `<h3 style="color: #00ffea;">Thread ${index + 1}</h3>`;
-        outputHtml += `<p>${thread.join("<br>")}</p>`;
-        outputHtml += `</div>`;
-    });
+            let outputHtml = "";
+            data.threads.forEach((thread, index) => {
+                outputHtml += `<div style="border: 2px solid #00ffea; padding: 10px; margin-top: 10px; border-radius: 5px;">`;
+                outputHtml += `<h3 style="color: #ff007f;">Thread ${index + 1}</h3>`;
+                outputHtml += `<p>${thread.join("<br>")}</p>`;
+                outputHtml += `</div>`;
+            });
 
-    document.getElementById("output").innerHTML = outputHtml;
-}
-
+            document.getElementById("output").innerHTML = outputHtml;
+        }
     </script>
 </body>
 </html>
