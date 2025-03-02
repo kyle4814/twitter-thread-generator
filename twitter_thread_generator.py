@@ -1,80 +1,148 @@
-### **Master Prompt for AI to Fix the Twitter Thread Generator**
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import random
+import requests
+import os
+from dotenv import load_dotenv
 
-**Objective:**  
-You are a highly advanced AI developer tasked with **fixing, optimizing, and enhancing** an AI-powered **Twitter Thread Generator**. The system fetches trending topics and insights from **Reddit, Twitter, NewsAPI**, and an internal database, generating **high-quality Twitter threads** in a structured format.
+# Load environment variables
+load_dotenv()
 
-**Current Issues to Fix & Improvements Needed:**
----
+app = Flask(__name__)
 
-### **1️⃣ CORS Error (Critical)**
-- **Issue:** The backend API `https://twitter-generator-api.up.railway.app/generate_thread` is **blocked by CORS policy** when requested from `https://kyle4814.github.io`.
-- **Fix:**  
-  - Ensure the backend **Flask API includes the correct CORS headers** to allow cross-origin requests.
-  - Use `Flask-CORS` properly and **set the correct origins**:
-    ```python
-    from flask_cors import CORS
-    CORS(app, resources={r"/*": {"origins": "*"}})
-    ```
-  - Verify that **preflight OPTIONS requests** receive a proper response.
+# Configure CORS to allow requests from GitHub Pages and localhost
+allowed_origins = os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io,http://localhost:3000').split(',')
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": allowed_origins}})
 
----
+@app.after_request
+def add_cors_headers(response):
+    """Ensure CORS headers are correctly added."""
+    origin = request.headers.get('Origin')
+    if origin and origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        response.headers["Access-Control-Allow-Origin"] = allowed_origins[0]
+    
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 
-### **2️⃣ API Endpoint Not Handling Requests Properly**
-- **Issue:** The frontend is making a **POST request to `/generate_thread`**, but the backend is **returning a 405 (Method Not Allowed)**.
-- **Fix:**  
-  - Ensure the Flask route is correctly defined:
-    ```python
-    @app.route('/generate_thread', methods=['POST'])
-    ```
-  - Confirm **the deployed backend matches the latest GitHub version**.
-  - Verify the `requirements.txt` file includes **all necessary dependencies**.
+# Topic database with diverse subjects
+TOPIC_DATABASE = {
+    "AI": [
+        "AI-powered automation saves businesses millions annually.",
+        "Neural networks can now predict consumer behavior with 87% accuracy.",
+        "GPT-4 has revolutionized content creation for businesses worldwide.",
+        "The ethical implications of AI decision-making in healthcare settings.",
+    ],
+    "Digital Marketing": [
+        "SEO is still the #1 driver of free organic traffic for 76% of businesses.",
+        "Email marketing generates $42 for every $1 spent on average.",
+    ],
+    "Sports": [
+        "Michael Jordan's mindset: How psychological preparation creates champions.",
+        "Recovery science is revolutionizing athletic performance standards.",
+    ],
+    "History": [
+        "The economic factors that contributed to the fall of the Roman Empire.",
+        "Archaeological evidence suggests ancient Egyptians used electricity.",
+    ],
+    "Business": [
+        "Problem-solution fit: Why the best businesses solve painful problems.",
+        "Recession-proof business models thriving in economic downturns.",
+    ]
+}
 
----
+# Function to fetch data from Reddit API
+def fetch_reddit_insights(topic):
+    headers = {"User-Agent": "TwitterThreadGenerator/1.0"}
+    url = f"https://www.reddit.com/r/{topic}/top.json?limit=5"
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            posts = response.json().get("data", {}).get("children", [])
+            return [post["data"]["title"] for post in posts][:5]
+    except Exception as e:
+        print(f"Reddit fetch error: {e}")
+    return []
 
-### **3️⃣ Fetching & Processing External Data Sources**
-- **Issue:** The generator is **not pulling diverse insights** and is **biased towards AI topics**.
-- **Fix:**  
-  - Ensure **proper API calls to Reddit, Twitter, and NewsAPI** for dynamic content.
-  - Implement **Redis caching** for efficiency.
-  - Example fix for **Reddit fetching**:
-    ```python
-    def fetch_reddit_insights(topic):
-        headers = {"User-Agent": "TwitterThreadGenerator/1.0"}
-        url = f"https://www.reddit.com/r/{topic}/top.json?limit=5"
-        response = requests.get(url, headers=headers)
-        return [post["data"]["title"] for post in response.json().get("data", {}).get("children", [])]
-    ```
+# Function to fetch data from NewsAPI
+def fetch_news_insights(topic):
+    api_key = os.getenv('NEWSAPI_KEY')
+    if not api_key:
+        return []
+        
+    url = f"https://newsapi.org/v2/everything?q={topic}&sortBy=popularity&apiKey={api_key}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            articles = response.json().get("articles", [])
+            return [article["title"] for article in articles][:5]
+    except Exception as e:
+        print(f"NewsAPI fetch error: {e}")
+    return []
 
----
+@app.route('/generate_thread', methods=['POST', 'OPTIONS'])
+def generate_thread():
+    if request.method == "OPTIONS":
+        return jsonify({"message": "CORS preflight successful"}), 200
 
-### **4️⃣ Improved UI & Frontend Fixes**
-- **Issue:** The frontend **looks broken** and **missing styles**.
-- **Fix:**  
-  - **Ensure `style.css` is correctly linked** (`404 Not Found` issue).
-  - Fix `script.js` **missing or broken function calls**.
-  - Verify **HTML input elements work properly**.
+    try:
+        data = request.json
+        topics = [t.strip() for t in data.get("topic", "").split(",") if t.strip()]
+        num_threads = min(int(data.get("num_threads", 1)), 10)
+        thread_length = min(int(data.get("thread_length", 5)), 8)
+        random_mode = data.get("random_mode", False)
 
----
+        threads = []
+        used_insights = set()
 
-### **5️⃣ GitHub Push Issues**
-- **Issue:** User **cannot push new commits** due to a **remote branch conflict**.
-- **Fix:**  
-  - Use the following **Git commands**:
-    ```bash
-    git pull origin main --rebase
-    git add .
-    git commit -m "Fix CORS, API issues, UI improvements"
-    git push origin main
-    ```
+        for _ in range(num_threads):
+            # Select topic based on user input or random selection
+            if random_mode or not topics:
+                selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
+            else:
+                selected_topic = random.choice(topics) if topics else random.choice(list(TOPIC_DATABASE.keys()))
 
----
+            # Try to fetch insights from Reddit first
+            available_insights = fetch_reddit_insights(selected_topic)
+            
+            # If Reddit fails, try NewsAPI
+            if not available_insights:
+                available_insights = fetch_news_insights(selected_topic)
+            
+            # Fallback to our database if external APIs fail
+            if not available_insights:
+                available_insights = TOPIC_DATABASE.get(selected_topic, [])
 
-### **Final Deliverables**
-- ✅ **Fixed Backend API** (CORS, API handling, external data fetching)
-- ✅ **Optimized Frontend** (CSS fixes, working JS, correct API calls)
-- ✅ **Fully Functional Deployment** (GitHub & Railway working perfectly)
+            # Filter out previously used insights
+            available_insights = [insight for insight in available_insights if insight not in used_insights]
+            
+            # If we don't have enough unique insights, get more from our database
+            if len(available_insights) < thread_length:
+                db_insights = [insight for insight in TOPIC_DATABASE.get(selected_topic, []) 
+                              if insight not in used_insights]
+                available_insights.extend(db_insights)
+            
+            # Select insights randomly
+            selected_insights = random.sample(
+                available_insights, 
+                min(thread_length, len(available_insights))
+            )
+            
+            # Format the thread
+            thread = [f"{insight}" for insight in selected_insights]
+            used_insights.update(selected_insights)
+            threads.append({"topic": selected_topic, "insights": thread})
 
----
+        return jsonify({"threads": threads, "status": "success"})
 
-**GOAL:**  
-This AI-powered **Twitter Thread Generator** should be **flawless, seamless, and generate viral threads** in **seconds**. Fix **every single issue** and **maximize performance**. 🚀
+    except Exception as e:
+        print(f"Error generating thread: {e}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
+
+if __name__ == '__main__':
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('ENV', 'dev').lower() == 'dev'
+    print(f"✨ Insight Generator server is running in {os.getenv('ENV', 'dev')} mode!")
+    app.run(host='0.0.0.0', port=port, debug=debug)
