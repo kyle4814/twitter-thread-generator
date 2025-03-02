@@ -17,6 +17,7 @@ def generate_thread():
         thread = [f"🔥 {topic} Insight {j+1} (Thread {i+1})" for j in range(thread_length)]
         threads.append(thread)
 
+    print("Generated Threads:", threads)  # Debugging
     return jsonify({"threads": threads})
 
 if __name__ == '__main__':
