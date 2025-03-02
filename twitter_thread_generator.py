@@ -21,22 +21,17 @@ app = Flask(__name__)
 # ================== CORS CONFIG (MISSILE-LOCKED EDITION) ==================
 CORS(app, resources={
     r"/generate_thread": {
-        "origins": ["https://kyle4844.github.io", "http://localhost:*"],
-        "methods": ["POST", "OPTIONS", "GET"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Length", "X-Request-ID"],
-        "supports_credentials": True,
-        "max_age": 86400  # 24-hour preflight cache
+        "origins": ["https://kyle4814.github.io"],  # 4814 NOT 4844
+        # ... keep other configs ...
     }
 })
 
-# MANUAL OPTIONS HANDLER (Double-tap fix)
+# Update manual OPTIONS handler too
 @app.route('/generate_thread', methods=['OPTIONS'])
 def options_handler():
     return '', 204, {
-        'Access-Control-Allow-Origin': 'https://kyle4844.github.io',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Access-Control-Allow-Origin': 'https://kyle4814.github.io',  # FIXED
+        # ... rest unchanged ...
     }
 
 # Initialize Redis
