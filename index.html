@@ -38,11 +38,12 @@
             const numThreads = parseInt(document.getElementById('numThreads').value) || 1;
             const threadLength = parseInt(document.getElementById('threadLength').value) || 5;
             const randomMode = document.getElementById('randomMode').checked;
+            const API_URL = "https://web-production-02c88.up.railway.app/";
 
             document.getElementById('threadContainer').innerHTML = '<p>⏳ Generating insights...</p>';
 
             try {
-                const response = await fetch('/generate_thread', {
+                const response = await fetch(API_URL, { ... });
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic, num_threads: numThreads, thread_length: threadLength, random_mode: randomMode }),
