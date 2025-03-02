@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔥 AI Twitter Thread Generator</title>
-    <link rel="stylesheet" href="static/style.css"> <!-- Fixed path for CSS -->
+    <title>AI Twitter Thread Generator</title>
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
     <div class="container">
         <h1>🚀 AI Twitter Thread Generator</h1>
         <p>Enter your preferences and let AI generate high-performing Twitter threads for you.</p>
-
-        <label for="topic">Topic:</label>
-        <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business)">
-
-        <label for="numThreads">Number of Threads:</label>
-        <input type="number" id="numThreads" min="1" max="10" value="1">
-
-        <label for="threadLength">Insights per Thread:</label>
-        <input type="number" id="threadLength" min="1" max="8" value="5">
-
-        <div>
-            <input type="checkbox" id="randomMode">
-            <label for="randomMode">Enable Random Mode</label>
+        
+        <div class="card">
+            <label for="topic">Topic:</label>
+            <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business)">
+            
+            <label for="numThreads">Number of Threads:</label>
+            <input type="number" id="numThreads" min="1" max="10" value="1">
+            
+            <label for="threadLength">Insights per Thread:</label>
+            <input type="number" id="threadLength" min="1" max="8" value="5">
+            
+            <div class="checkbox-container">
+                <input type="checkbox" id="randomMode">
+                <label for="randomMode">Enable Random Mode</label>
+            </div>
+            
+            <button onclick="generateThread()">Generate Thread</button>
         </div>
-
-        <button onclick="generateThread()">🔥 Generate Thread</button>
-
-        <div id="threadContainer"></div>
+        
+        <div id="threadContainer" class="thread-container"></div>
     </div>
 
-    <script src="static/script.js"></script> <!-- Ensures JavaScript is loaded -->
+    <script src="static/script.js"></script>
 </body>
 </html>
