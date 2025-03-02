@@ -11,7 +11,7 @@ async function generateThread() {
     `;
 
     try {
-        const response = await fetch('/generate_thread', {
+        const response = await fetch("https://twitter-generator-api.up.railway.app/generate_thread", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
