@@ -2,46 +2,19 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io"]}}, supports_credentials=True)
 
-# ✅ Fix CORS: Allow requests from GitHub Pages
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": "https://kyle4814.github.io"}})
-
-@app.after_request
-def add_cors_headers(response):
-    """Ensure CORS headers are correctly added."""
-    response.headers["Access-Control-Allow-Origin"] = "https://kyle4814.github.io"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
-
-@app.route('/generate_thread', methods=['POST', 'OPTIONS'])
+@app.route('/generate_thread', methods=['POST'])
 def generate_thread():
-    if request.method == "OPTIONS":
-        return jsonify({"message": "CORS preflight successful"}), 200
-
     try:
         data = request.json
-        topic = data.get("topic", "").strip()
-        num_threads = min(int(data.get("num_threads", 1)), 10)
-        thread_length = min(int(data.get("thread_length", 5)), 8)
-        random_mode = data.get("random_mode", False)
-
-        threads = []
-
-        for _ in range(num_threads):
-            selected_topic = topic if topic in TOPIC_DATABASE else random.choice(list(TOPIC_DATABASE.keys()))
-            selected_insights = random.sample(TOPIC_DATABASE[selected_topic], min(thread_length, len(TOPIC_DATABASE[selected_topic])))
-
-            thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
-            threads.append(thread)
-
-        return jsonify({"threads": threads, "status": "success"})
-
+        return jsonify({"message": "CORS is now fixed!", "data": data})
     except Exception as e:
-        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)
+
 
 
 # Expanded topic database with diverse subjects
