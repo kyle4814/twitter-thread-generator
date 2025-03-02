@@ -65,4 +65,28 @@ def generate_thread():
 
             # If we don't have enough fresh insights, allow repeats
             if len(available_insights) < thread_length:
-                a
+                available_insights = TOPIC_DATABASE[selected_topic]
+
+            # Select random insights for this thread
+            selected_insights = random.sample(
+                available_insights, 
+                min(thread_length, len(available_insights))
+            )
+
+            # Format each insight
+            thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
+
+            # Mark these insights as used
+            used_insights.update(selected_insights)
+            threads.append(thread)
+
+        print(f"Generated {len(threads)} threads successfully")
+        return jsonify({"threads": threads, "status": "success"})
+
+    except Exception as e:
+        print(f"Error generating thread: {e}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
+
+if __name__ == '__main__':
+    print("✨ Insight Generator server is running!")
+    app.run(debug=True)
