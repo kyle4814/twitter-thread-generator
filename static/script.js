@@ -11,7 +11,7 @@ async function generateThread() {
     `;
 
     try {
-        const response = await fetch('https://web-production-d52f.up.railway.app/generate_thread', {
+        const response = await fetch('/generate_thread', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -35,12 +35,14 @@ async function generateThread() {
 
         let threadsHTML = '';
         data.threads.forEach((thread, index) => {
-            let insightsHTML = thread.map(insight => `
-                <div class="insight">
-                    <p>✨ ${insight}</p>
-                </div>
-            `).join('');
-
+            let insightsHTML = '';
+            thread.forEach(insight => {
+                insightsHTML += `
+                    <div class="insight">
+                        <p>✨ ${insight}</p>
+                    </div>
+                `;
+            });
             threadsHTML += `
                 <div class="thread">
                     <h3>🔥 Thread ${index + 1}</h3>
@@ -50,7 +52,6 @@ async function generateThread() {
         });
 
         document.getElementById('threadContainer').innerHTML = threadsHTML;
-
     } catch (error) {
         document.getElementById('threadContainer').innerHTML = `
             <div class="thread">
