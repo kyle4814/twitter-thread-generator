@@ -11,24 +11,31 @@ import tweepy
 from newsapi import NewsApiClient
 import redis
 from datetime import datetime
+from dotenv import load_dotenv
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS').split(',')}})
+CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io').split(',')}})
 
 # Initialize Redis
-redis_client = redis.Redis.from_url(os.getenv('REDIS_URL'))
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+# Test Redis connection
+try:
+    redis_client.ping()
+    logger.info("✅ Connected to Redis!")
+except Exception as e:
+    logger.error(f"❌ Failed to connect to Redis: {e}")
 
 # Initialize rate limiting
-limiter = Limiter(app=app, key_func=get_remote_address, storage_uri=os.getenv('REDIS_URL'))
+limiter = Limiter(app=app, key_func=get_remote_address, storage_uri="redis://localhost:6379/0")
 
 # Configuration
 CONFIG = {
@@ -162,53 +169,4 @@ def generate_thread_structure(topic: str, insights: List[str]) -> List[str]:
         ))
     
     # Add viral elements
-    thread.insert(1, "🧵👇 (Thread) ↓")
-    thread.append(f"💡 Want more like this? → {random.choice(CTAS)}")
-    
-    return thread
-
-# API Endpoint
-@app.route('/generate', methods=['POST'])
-@limiter.limit(lambda: CONFIG['monetization'][get_user_tier(request.headers.get('X-API-Key'))]['rate_limit'])
-def generate_thread():
-    """Main generation endpoint"""
-    try:
-        # Authentication and authorization
-        user_tier = get_user_tier(request.headers.get('X-API-Key'))
-        usage_key = f"usage:{request.remote_addr}"
-        
-        if user_tier == 'free':
-            current_usage = int(redis_client.get(usage_key) or 0
-            if current_usage >= CONFIG['monetization']['free_tier']['daily_limit']:
-                return jsonify({"error": "Daily limit exceeded. Upgrade to PRO."}), 429
-        
-        # Process request
-        data = request.json
-        topic = data.get('topic', random.choice(list(TOPIC_DATABASE.keys())))
-        
-        # Fetch insights
-        insights = fetch_trending_topics()
-        
-        # Generate thread
-        thread = generate_thread_structure(topic, insights)
-        
-        # Track usage
-        if user_tier == 'free':
-            redis_client.incr(usage_key)
-            redis_client.expire(usage_key, 86400)  # Reset after 24 hours
-        
-        return jsonify({
-            "thread": thread,
-            "cta": random.choice(CTAS),
-            "monetization": {
-                "upsell": "Unlock 100x more insights with PRO → [LINK]" if user_tier == 'free' else None
-            }
-        })
-    
-    except Exception as e:
-        logger.error(f"Generation error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-# Run the app
-if __name__ == '__main__':
-    app.run(debug=True)
+    thread.insert
