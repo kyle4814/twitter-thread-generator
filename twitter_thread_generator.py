@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import random
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io", "*"]}}, supports_credentials=True)
 
 # Expanded topic database with diverse subjects
@@ -54,12 +54,12 @@ def generate_thread():
             if random_mode or not topic:
                 selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
             else:
-                # If the user-entered topic isn't in the database, pick a random one
+                # If user-entered topic isn't in the database, pick a random one
                 selected_topic = topic if topic in TOPIC_DATABASE else random.choice(list(TOPIC_DATABASE.keys()))
 
-            # Filter out insights that were already used in previous threads
+            # Filter out insights that were already used
             available_insights = [
-                insight for insight in TOPIC_DATABASE[selected_topic] 
+                insight for insight in TOPIC_DATABASE[selected_topic]
                 if insight not in used_insights
             ]
 
@@ -68,10 +68,7 @@ def generate_thread():
                 available_insights = TOPIC_DATABASE[selected_topic]
 
             # Select random insights for this thread
-            selected_insights = random.sample(
-                available_insights, 
-                min(thread_length, len(available_insights))
-            )
+            selected_insights = random.sample(available_insights, min(thread_length, len(available_insights)))
 
             # Format each insight
             thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
