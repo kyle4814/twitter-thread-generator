@@ -2,18 +2,23 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from pydantic import BaseModel, ValidationError
 import random
 import requests
 import os
 import redis
+import json
+import logging
+from datetime import timedelta
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# Initialize Flask app
 app = Flask(__name__)
 
-# ================== CORS CONFIGURATION ==================
+# Configure CORS
 CORS(app, resources={
     r"/generate_thread": {
         "origins": "*",
@@ -23,14 +28,14 @@ CORS(app, resources={
     }
 })
 
-# ================== REDIS CACHING ==================
+# Initialize Redis
 redis_client = redis.Redis(
     host=os.getenv('REDIS_HOST', 'localhost'),
     port=os.getenv('REDIS_PORT', 6379),
     db=0
 )
 
-# ================== RATE LIMITING ==================
+# Configure rate limiting
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
@@ -38,60 +43,60 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
-# ================== VIRAL CONTENT FRAMEWORKS ==================
-VIRAL_FRAMEWORKS = {
-    'hook_problem_solution': [
-        "🔥 {hook} (But here's what nobody is telling you...)",
-        "💔 The REAL problem: {problem}",
-        "💡 BREAKTHROUGH: {insight}",
-        "🚀 Solution: {solution} (👉 {cta})"
-    ],
-    'listicle': [
-        "🚀 {count} {topic} Secrets Top Experts Won't Tell You:",
-        "1️⃣ {point1}",
-        "2️⃣ {point2}",
-        "3️⃣ {point3}",
-        "🔑 The Key: {key_insight} (👉 {cta})"
-    ]
-}
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-CTAS = [
-    "Grab your FREE guide → [LINK]",
-    "Join our premium community → [LINK]",
-    "Book your AI consultation → [LINK]"
-]
+# Request validation model
+class ThreadRequest(BaseModel):
+    topic: str
+    num_threads: int
+    thread_length: int
+    random_mode: bool
 
-# ================== TRENDING CONTENT FETCHERS ==================
-def fetch_reddit_trends():
-    cache_key = "reddit_trends"
-    cached = redis_client.get(cache_key)
-    if cached:
-        return json.loads(cached)
-    
-    headers = {"User-Agent": "MoneyPrinterAI/1.0"}
-    response = requests.get("https://www.reddit.com/r/popular/top.json?limit=15", headers=headers)
-    data = response.json().get('data', {}).get('children', [])
-    trends = [post['data']['title'] for post in data]
-    redis_client.setex(cache_key, 3600, json.dumps(trends))  # Cache for 1 hour
-    return trends
+# Error handlers
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Resource not found", "status": "error"}), 404
 
-# ================== MAIN ENDPOINT ==================
+@app.errorhandler(500)
+def server_error(error):
+    return jsonify({"error": "Internal server error", "status": "error"}), 500
+
+# Redis caching functions
+def get_cached_response(key):
+    cached = redis_client.get(key)
+    return json.loads(cached) if cached else None
+
+def set_cached_response(key, data, ttl=3600):  # Cache for 1 hour
+    redis_client.setex(key, timedelta(seconds=ttl), json.dumps(data))
+
+# Main endpoint
 @app.route('/generate_thread', methods=['POST'])
 @limiter.limit("10/minute")
 def generate_thread():
     try:
-        data = request.json
-        # [Add improved AI generation logic here]
+        # Validate request
+        data = ThreadRequest(**request.json)
         
-        # Return formatted response with CTA
+        # Check user tier (example: free vs. pro)
+        user_tier = request.headers.get('X-User-Tier', 'free')
+        if user_tier == 'free' and data.num_threads > 2:
+            return jsonify({"error": "Upgrade to PRO for more threads", "status": "error"}), 403
+
+        # Generate threads (replace with your logic)
+        threads = [{"topic": data.topic, "insights": ["Insight 1", "Insight 2"]}]
+        
         return jsonify({
-            "threads": formatted_threads,
-            "cta": random.choice(CTAS),
+            "threads": threads,
             "status": "success"
         })
     
+    except ValidationError as e:
+        return jsonify({"error": str(e), "status": "error"}), 400
     except Exception as e:
-        return jsonify({"error": str(e), "status": "error"}), 500
+        logger.error(f"Error generating thread: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.getenv('PORT', 5000))
