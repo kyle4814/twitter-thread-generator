@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import random
+import requests
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io", "*"]}}, supports_credentials=True)
@@ -31,53 +32,48 @@ TOPIC_DATABASE = {
     ]
 }
 
+# Function to fetch data from Reddit API
+def fetch_reddit_insights(topic):
+    headers = {"User-Agent": "TwitterThreadGenerator/1.0"}
+    url = f"https://www.reddit.com/r/{topic}/top.json?limit=5"
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            posts = response.json().get("data", {}).get("children", [])
+            return [post["data"]["title"] for post in posts][:5]
+    except Exception as e:
+        print(f"Reddit fetch error: {e}")
+    return []
+
 @app.route('/generate_thread', methods=['POST'])
 def generate_thread():
     try:
         data = request.json
-        topic = data.get("topic", "").strip()
+        topics = [t.strip() for t in data.get("topic", "").split(",")]
         num_threads = min(int(data.get("num_threads", 1)), 10)
         thread_length = min(int(data.get("thread_length", 5)), 8)
         random_mode = data.get("random_mode", False)
-
-        # Validate input
-        num_threads = max(num_threads, 1)
-        thread_length = max(thread_length, 1)
-
-        print(f"Request Received: {data}")  # Debug log
 
         threads = []
         used_insights = set()
 
         for _ in range(num_threads):
-            # Determine the selected topic based on mode and input
-            if random_mode or not topic:
+            if random_mode or not topics:
                 selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
             else:
-                # If user-entered topic isn't in the database, pick a random one
-                selected_topic = topic if topic in TOPIC_DATABASE else random.choice(list(TOPIC_DATABASE.keys()))
+                selected_topic = random.choice(topics) if topics else random.choice(list(TOPIC_DATABASE.keys()))
 
-            # Filter out insights that were already used
-            available_insights = [
-                insight for insight in TOPIC_DATABASE[selected_topic]
-                if insight not in used_insights
-            ]
+            available_insights = fetch_reddit_insights(selected_topic) or TOPIC_DATABASE.get(selected_topic, [])
+            available_insights = [insight for insight in available_insights if insight not in used_insights]
 
-            # If we don't have enough fresh insights, allow repeats
             if len(available_insights) < thread_length:
                 available_insights = TOPIC_DATABASE[selected_topic]
 
-            # Select random insights for this thread
             selected_insights = random.sample(available_insights, min(thread_length, len(available_insights)))
-
-            # Format each insight
             thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
-
-            # Mark these insights as used
             used_insights.update(selected_insights)
             threads.append(thread)
 
-        print(f"Generated {len(threads)} threads successfully")
         return jsonify({"threads": threads, "status": "success"})
 
     except Exception as e:
@@ -86,4 +82,4 @@ def generate_thread():
 
 if __name__ == '__main__':
     print("✨ Insight Generator server is running!")
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
