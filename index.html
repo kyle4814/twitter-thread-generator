@@ -1,109 +1,153 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import random
 import requests
+import os
+import logging
+from typing import List, Dict, Union
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io", "*"]}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ORIGINS', 'https://kyle4814.github.io').split(',')}})
 
-# Expanded topic database with diverse subjects
-TOPIC_DATABASE = {
-    "AI": [
-        "🚀 AI is taking over. Here’s how you can profit before it’s too late!",
-        "🤖 Neural networks now predict consumer behavior with 87% accuracy!",
-        "🔥 AI-powered automation is making businesses MILLIONS! Are you in?",
-        "💡 The ethical implications of AI decision-making in healthcare!",
-    ],
-    "Business": [
-        "💰 Recession-proof business models thriving right now! Don’t miss out!",
-        "📈 How storytelling creates deep emotional connections with customers!",
-        "⚡️ The cashflow strategies of billion-dollar companies revealed!",
-        "💡 Why customer retention beats acquisition every single time!",
-    ],
-    "Finance": [
-        "🚨 Big investors are shifting money FAST. Here’s where it’s going!",
-        "💰 Wealth preservation strategies for uncertain economies!",
-        "🔥 Portfolio diversification secrets top investors don’t want you to know!",
-        "📉 What central banks aren’t telling you about inflation!",
-    ],
-    "Sports": [
-        "👑 Michael Jordan’s mindset hack to DOMINATE competition!",
-        "🏆 Recovery science is revolutionizing athletic performance!",
-        "🔥 The secret to mental toughness used by elite athletes!",
-        "⚡️ How sports analytics is changing the game FOREVER!",
-    ],
-    "Technology": [
-        "🚀 Quantum computing is about to disrupt EVERYTHING. Here’s why!",
-        "🔐 Biometric authentication tech: The future of security!",
-        "🌍 The AI revolution is here! What’s next?",
-        "⚡️ How 6G will completely change connectivity as we know it!",
-    ],
+# Rate limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
+
+# Configuration
+API_CONFIG = {
+    'reddit_client_id': os.getenv('REDDIT_CLIENT_ID'),
+    'reddit_client_secret': os.getenv('REDDIT_CLIENT_SECRET'),
+    'news_api_key': os.getenv('NEWS_API_KEY')
 }
 
-# Function to fetch trending topics from Google Trends API (Placeholder API)
-def fetch_google_trends():
-    url = "https://trends.google.com/trends/trendingsearches/daily?geo=US"
+# Load topic database from external file
+TOPIC_DATABASE: Dict[str, List[str]] = {
+    # ... (your existing topic database here)
+}
+
+def get_reddit_token() -> Union[str, None]:
+    """Get Reddit OAuth2 access token."""
     try:
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            trends = response.json().get("default", {}).get("trendingSearchesDays", [])
-            return [trend["title"].get("query", "") for trend in trends[:5]]
+        response = requests.post(
+            'https://www.reddit.com/api/v1/access_token',
+            auth=requests.auth.HTTPBasicAuth(API_CONFIG['reddit_client_id'], API_CONFIG['reddit_client_secret']),
+            data={'grant_type': 'client_credentials'},
+            headers={'User-Agent': 'TwitterThreadGenerator/1.0'},
+            timeout=5
+        )
+        return response.json().get('access_token') if response.status_code == 200 else None
     except Exception as e:
-        print(f"Google Trends fetch error: {e}")
+        logger.error(f"Reddit auth failed: {e}")
+        return None
+
+def fetch_reddit_insights(topic: str) -> List[str]:
+    """Fetch trending posts from Reddit related to topic."""
+    token = get_reddit_token()
+    if not token:
+        return []
+
+    try:
+        response = requests.get(
+            f"https://www.reddit.com/search.json?q={topic}&limit=5&sort=relevance",
+            headers={'Authorization': f'Bearer {token}', 'User-Agent': 'TwitterThreadGenerator/1.0'},
+            timeout=5
+        )
+        if response.status_code == 200:
+            return [post['data']['title'] for post in response.json().get('data', {}).get('children', [])]
+    except Exception as e:
+        logger.error(f"Reddit fetch error: {e}")
     return []
 
-# Function to fetch data from Reddit API
-def fetch_reddit_insights(topic):
-    headers = {"User-Agent": "TwitterThreadGenerator/1.0"}
-    url = f"https://www.reddit.com/r/{topic}/top.json?limit=5"
+def fetch_news_trends() -> List[str]:
+    """Fetch trending news headlines using News API."""
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(
+            f"https://newsapi.org/v2/top-headlines?country=us&apiKey={API_CONFIG['news_api_key']}",
+            timeout=5
+        )
         if response.status_code == 200:
-            posts = response.json().get("data", {}).get("children", [])
-            return [post["data"]["title"] for post in posts][:5]
+            return [article['title'] for article in response.json().get('articles', [])[:5]]
     except Exception as e:
-        print(f"Reddit fetch error: {e}")
+        logger.error(f"News API error: {e}")
     return []
+
+def validate_input(topics: List[str], num_threads: int, thread_length: int) -> Union[None, tuple]:
+    """Validate input parameters."""
+    if not isinstance(num_threads, int) or not 1 <= num_threads <= 10:
+        return ("Invalid number of threads", 400)
+    if not isinstance(thread_length, int) or not 1 <= thread_length <= 15:
+        return ("Invalid thread length", 400)
+    if any(topic not in TOPIC_DATABASE for topic in topics):
+        return ("Invalid topics provided", 400)
+    return None
 
 @app.route('/generate_thread', methods=['POST'])
+@limiter.limit("10 per minute")
 def generate_thread():
+    """Generate Twitter threads based on input parameters."""
     try:
-        data = request.json
-        topics = [t.strip() for t in data.get("topic", "").split(",")]
+        data = request.get_json()
+        topics = [t.strip() for t in data.get("topic", "").split(",") if t.strip()]
         num_threads = min(int(data.get("num_threads", 1)), 10)
-        thread_length = min(int(data.get("thread_length", 5)), 8)
+        thread_length = min(int(data.get("thread_length", 5)), 15)
         random_mode = data.get("random_mode", False)
+
+        # Input validation
+        if error := validate_input(topics, num_threads, thread_length):
+            return jsonify({"error": error[0], "status": "error"}), error[1]
 
         threads = []
         used_insights = set()
 
         for _ in range(num_threads):
+            # Select topic
             if random_mode or not topics:
                 selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
             else:
-                selected_topic = random.choice(topics) if topics else random.choice(list(TOPIC_DATABASE.keys()))
+                selected_topic = random.choice(topics)
 
+            # Fetch insights
             reddit_insights = fetch_reddit_insights(selected_topic)
-            google_trends = fetch_google_trends()
-            topic_insights = TOPIC_DATABASE.get(selected_topic, [])
+            news_trends = fetch_news_trends()
+            local_insights = TOPIC_DATABASE.get(selected_topic, [])
+            
+            # Combine and deduplicate
+            combined = list(set(reddit_insights + news_trends + local_insights))
+            available = [insight for insight in combined if insight not in used_insights]
+            
+            # Fallback to local insights if insufficient
+            if len(available) < thread_length:
+                available = [insight for insight in local_insights if insight not in used_insights]
 
-            combined_insights = list(set(reddit_insights + google_trends + topic_insights))
-            available_insights = [insight for insight in combined_insights if insight not in used_insights]
+            # Select final insights
+            selected = random.sample(available, min(thread_length, len(available)))
+            used_insights.update(selected)
+            
+            # Format thread
+            threads.append([f"🔥 {selected_topic}: {insight}" for insight in selected])
 
-            if len(available_insights) < thread_length:
-                available_insights = topic_insights
-
-            selected_insights = random.sample(available_insights, min(thread_length, len(available_insights)))
-            thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
-            used_insights.update(selected_insights)
-            threads.append(thread)
-
-        return jsonify({"threads": threads, "status": "success"})
+        return jsonify({
+            "threads": threads,
+            "status": "success",
+            "meta": {
+                "generated_threads": len(threads),
+                "total_insights": len(used_insights)
+            }
+        })
 
     except Exception as e:
-        print(f"Error generating thread: {e}")
-        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
+        logger.error(f"Generation error: {e}")
+        return jsonify({"error": "Internal server error", "status": "error"}), 500
 
 if __name__ == '__main__':
-    print("✨ Insight Generator server is running!")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    logger.info("✨ Insight Generator server is running!")
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=os.getenv('DEBUG', 'false').lower() == 'true')
