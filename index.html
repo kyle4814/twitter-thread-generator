@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔥 AI Twitter Thread Generator</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>🚀 AI Twitter Thread Generator</title>
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
     <div class="container">
@@ -13,7 +13,7 @@
 
         <div class="card">
             <label for="topic">Topic:</label>
-            <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business, Sports)">
+            <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business)">
 
             <label for="numThreads">Number of Threads:</label>
             <input type="number" id="numThreads" min="1" max="10" value="1">
@@ -23,49 +23,15 @@
 
             <div class="checkbox-container">
                 <input type="checkbox" id="randomMode">
-                <label for="randomMode">🔀 Enable Random Mode</label>
+                <label for="randomMode">Enable Random Mode</label>
             </div>
 
-            <button onclick="generateThread()">🔥 Generate Thread</button>
+            <button onclick="generateThread()">🚀 Generate Thread</button>
         </div>
 
         <div id="threadContainer" class="thread-container"></div>
     </div>
 
-    <script>
-        async function generateThread() {
-            const topic = document.getElementById('topic').value.trim() || 'AI';
-            const numThreads = parseInt(document.getElementById('numThreads').value) || 1;
-            const threadLength = parseInt(document.getElementById('threadLength').value) || 5;
-            const randomMode = document.getElementById('randomMode').checked;
-            const API_URL = "https://web-production-02c88.up.railway.app/";
-
-            document.getElementById('threadContainer').innerHTML = '<p>⏳ Generating insights...</p>';
-
-            try {
-                const response = await fetch(API_URL, { ... });
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic, num_threads: numThreads, thread_length: threadLength, random_mode: randomMode }),
-                });
-
-                const data = await response.json();
-                if (data.status === 'error' || !data.threads) {
-                    throw new Error(data.error || "Unexpected server response.");
-                }
-
-                let threadsHTML = '';
-                data.threads.forEach((thread, index) => {
-                    let insightsHTML = thread.map(insight => `<div class="insight">✨ ${insight}</div>`).join('');
-                    threadsHTML += `<div class="thread"><h3>🔥 Thread ${index + 1}</h3>${insightsHTML}</div>`;
-                });
-
-                document.getElementById('threadContainer').innerHTML = threadsHTML;
-
-            } catch (error) {
-                document.getElementById('threadContainer').innerHTML = `<p>❌ Error: ${error.message}</p>`;
-            }
-        }
-    </script>
+    <script src="static/script.js"></script>
 </body>
 </html>
