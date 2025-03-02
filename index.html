@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Thread Generator</title>
+  <title>Twitter Thread Generator</title>
   <style>
     .thread {
       border: 1px solid #ddd;
@@ -48,8 +48,8 @@
       `;
 
       try {
-        // IMPORTANT: Replace with your actual Flask server URL
-        const response = await fetch('https://kyle4814.github.io/twitter-thread-generator/', {
+        // IMPORTANT: Replace this URL with the actual domain of your deployed Flask app
+        const response = await fetch('https://my-flask-app-domain.onrender.com/generate_thread', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -95,8 +95,4 @@
       } catch (error) {
         document.getElementById('threadContainer').innerHTML = `
           <div class="thread">
-            <p>⚠️ Network Error: ${error.message}</p>
-          </div>
-        `;
-      }
- 
+            <p>⚠️ Network Error: ${error.
