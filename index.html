@@ -65,7 +65,9 @@
 
         const data = await response.json();
 
-        // Ensure 'threads' exists and is an array
+        // Debugging step: Check if threads exist before looping
+        console.log("API Response:", data);
+
         if (!data.threads || !Array.isArray(data.threads)) {
             throw new Error("Invalid API response: 'threads' field is missing or not an array.");
         }
