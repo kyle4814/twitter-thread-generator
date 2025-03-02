@@ -127,17 +127,16 @@ async function generateThread() {
     const response = await fetch("https://web-production-fe14e.up.railway.app/generate_thread", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        mode: "cors",  // Enables cross-origin requests
+        mode: "cors",
         body: JSON.stringify({
             topic: document.getElementById("topic").value,
             num_threads: parseInt(document.getElementById("num_threads").value),
-            thread_length: parseInt(document.getElementById("thread_length").value),
-            sections: parseInt(document.getElementById("sections").value)
+            thread_length: parseInt(document.getElementById("thread_length").value)
         })
     });
 
     const data = await response.json();
-    console.log("Corrected API Response:", data);
+    console.log("Updated API Response:", data);
 
     if (!data.threads || !Array.isArray(data.threads)) {
         document.getElementById("output").innerHTML = "Error: Invalid API response.";
