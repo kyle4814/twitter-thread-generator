@@ -35,7 +35,6 @@ def options_handler():
     }
 
 # Initialize Redis
-redis_client = redis.Redis(
     host=os.getenv('REDIS_HOST', 'redis'),  # Railway uses 'redis' hostname
     port=os.getenv('REDIS_PORT', 6379),
     password=os.getenv('REDIS_PASSWORD', '')  # Add this line
@@ -45,7 +44,7 @@ redis_client = redis.Redis(
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    storage_uri="redis://localhost:6379/0",
+    storage_uri="memory://",  # <-- Use in-memory storage
     default_limits=["200 per day", "50 per hour"]
 )
 
