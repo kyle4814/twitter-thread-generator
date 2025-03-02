@@ -5,7 +5,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-REDDIT_API_URL = "https://www.reddit.com/r/{}/top.json?limit=5"
+REDDIT_API_URL = "https://api.pushshift.io/reddit/search/submission/?subreddit={}&limit=5"
 
 def fetch_reddit_posts(subreddit, keywords):
     """Fetch top Reddit posts and filter by keywords."""
