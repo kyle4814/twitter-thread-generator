@@ -1,122 +1,113 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyberpunk Twitter Thread Generator</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <style>
-    body {
-      background: linear-gradient(to right, #1a1a2e, #16213e);
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    .container {
-      max-width: 800px;
-      margin: 50px auto;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      border-radius: 10px;
-      box-shadow: 0 0 20px cyan;
-    }
-    h1 {
-      color: cyan;
-      text-shadow: 0 0 10px cyan;
-    }
-    input, select {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 5px;
-      border: 1px solid cyan;
-      background: #0f3460;
-      color: #fff;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      background: cyan;
-      color: #000;
-      font-size: 18px;
-      border: none;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    button:hover {
-      background: #00d4ff;
-    }
-    .thread-container {
-      margin-top: 20px;
-      padding: 10px;
-      border-radius: 5px;
-      background: #0f3460;
-      box-shadow: 0 0 10px cyan;
-    }
-    .thread {
-      padding: 10px;
-      margin-bottom: 10px;
-      border-left: 3px solid cyan;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1><i class="fas fa-bolt"></i> AI Twitter Thread Generator</h1>
-    
-    <label for="topic">Enter Topics (comma-separated):</label>
-    <input type="text" id="topic" placeholder="E.g., AI, Business, Sports">
-    
-    <label for="numThreads">Number of Threads:</label>
-    <input type="number" id="numThreads" value="1" min="1" max="10">
-    
-    <label for="threadLength">Number of Insights per Thread:</label>
-    <input type="number" id="threadLength" value="5" min="1" max="8">
-    
-    <label><input type="checkbox" id="randomMode"> Enable Random Search</label>
-    
-    <button onclick="generateThread()">Generate Thread</button>
-    
-    <div id="threadContainer" class="thread-container"></div>
-  </div>
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import random
+import requests
 
-  <script>
-    async function generateThread() {
-      const topicInput = document.getElementById('topic').value.trim();
-      const numThreads = parseInt(document.getElementById('numThreads').value) || 1;
-      const threadLength = parseInt(document.getElementById('threadLength').value) || 5;
-      const randomMode = document.getElementById('randomMode').checked;
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": ["https://kyle4814.github.io", "*"]}}, supports_credentials=True)
 
-      document.getElementById('threadContainer').innerHTML = `<div class='thread'>🚀 Generating insights...</div>`;
-      
-      try {
-        const response = await fetch('https://web-production-d52f.up.railway.app/generate_thread', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: topicInput, num_threads: numThreads, thread_length: threadLength, random_mode: randomMode }),
-        });
+# Expanded topic database with diverse subjects
+TOPIC_DATABASE = {
+    "AI": [
+        "AI-powered automation saves businesses millions annually.",
+        "Neural networks can now predict consumer behavior with 87% accuracy.",
+        "GPT-4 has revolutionized content creation for businesses worldwide.",
+        "The ethical implications of AI decision-making in healthcare settings.",
+    ],
+    "Digital Marketing": [
+        "SEO is still the #1 driver of free organic traffic for 76% of businesses.",
+        "Email marketing generates $42 for every $1 spent on average.",
+    ],
+    "Sports": [
+        "Michael Jordan's mindset: How psychological preparation creates champions.",
+        "Recovery science is revolutionizing athletic performance standards.",
+    ],
+    "History": [
+        "The economic factors that contributed to the fall of the Roman Empire.",
+        "Archaeological evidence suggests ancient Egyptians used electricity.",
+    ],
+    "Business": [
+        "Problem-solution fit: Why the best businesses solve painful problems.",
+        "Recession-proof business models thriving in economic downturns.",
+    ],
+    "Health": [
+        "Intermittent fasting protocols backed by research studies.",
+        "The impact of environmental toxins on hormonal balance.",
+    ],
+    "Finance": [
+        "Algorithmic trading strategies used by hedge funds.",
+        "Real estate investment trends in emerging markets.",
+    ],
+    "Creativity": [
+        "The neuroscience of creativity and innovative thinking.",
+        "How ambient noise levels affect creative processes.",
+    ]
+}
 
-        const data = await response.json();
+# Function to fetch trending topics from Google Trends API (Placeholder API)
+def fetch_google_trends():
+    url = "https://trends.google.com/trends/trendingsearches/daily?geo=US"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            trends = response.json().get("default", {}).get("trendingSearchesDays", [])
+            return [trend["title"].get("query", "") for trend in trends[:5]]
+    except Exception as e:
+        print(f"Google Trends fetch error: {e}")
+    return []
 
-        if (data.status === 'error' || !data.threads) {
-          document.getElementById('threadContainer').innerHTML = `<div class='thread'>⚠️ Error: ${data.error || "Unexpected server response."}</div>`;
-          return;
-        }
+# Function to fetch data from Reddit API
+def fetch_reddit_insights(topic):
+    headers = {"User-Agent": "TwitterThreadGenerator/1.0"}
+    url = f"https://www.reddit.com/r/{topic}/top.json?limit=5"
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            posts = response.json().get("data", {}).get("children", [])
+            return [post["data"]["title"] for post in posts][:5]
+    except Exception as e:
+        print(f"Reddit fetch error: {e}")
+    return []
 
-        let threadsHTML = '';
-        data.threads.forEach((thread, index) => {
-          let insightsHTML = '';
-          thread.forEach(insight => {
-            insightsHTML += `<div class='thread'>✨ ${insight}</div>`;
-          });
-          threadsHTML += `<div class='thread'><h3>🔥 Thread ${index + 1}</h3>${insightsHTML}</div>`;
-        });
+@app.route('/generate_thread', methods=['POST'])
+def generate_thread():
+    try:
+        data = request.json
+        topics = [t.strip() for t in data.get("topic", "").split(",")]
+        num_threads = min(int(data.get("num_threads", 1)), 10)
+        thread_length = min(int(data.get("thread_length", 5)), 8)
+        random_mode = data.get("random_mode", False)
 
-        document.getElementById('threadContainer').innerHTML = threadsHTML;
-      } catch (error) {
-        document.getElementById('threadContainer').innerHTML = `<div class='thread'>⚠️ Network Error: ${error.message}</div>`;
-      }
-    }
-  </script>
-</body>
-</html>
+        threads = []
+        used_insights = set()
+
+        for _ in range(num_threads):
+            if random_mode or not topics:
+                selected_topic = random.choice(list(TOPIC_DATABASE.keys()))
+            else:
+                selected_topic = random.choice(topics) if topics else random.choice(list(TOPIC_DATABASE.keys()))
+
+            reddit_insights = fetch_reddit_insights(selected_topic)
+            google_trends = fetch_google_trends()
+            topic_insights = TOPIC_DATABASE.get(selected_topic, [])
+
+            combined_insights = list(set(reddit_insights + google_trends + topic_insights))
+            available_insights = [insight for insight in combined_insights if insight not in used_insights]
+
+            if len(available_insights) < thread_length:
+                available_insights = topic_insights
+
+            selected_insights = random.sample(available_insights, min(thread_length, len(available_insights)))
+            thread = [f"🔥 {selected_topic}: {insight}" for insight in selected_insights]
+            used_insights.update(selected_insights)
+            threads.append(thread)
+
+        return jsonify({"threads": threads, "status": "success"})
+
+    except Exception as e:
+        print(f"Error generating thread: {e}")
+        return jsonify({"error": f"Internal Server Error: {str(e)}", "status": "error"}), 500
+
+if __name__ == '__main__':
+    print("✨ Insight Generator server is running!")
+    app.run(host='0.0.0.0', port=5000, debug=True)
