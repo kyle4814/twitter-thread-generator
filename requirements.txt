@@ -1,8 +1,7 @@
 flask==3.0.0
 flask-cors==4.0.0
-gunicorn==21.2.0
 redis==5.0.1
-pydantic==2.10.6
-flask-limiter==3.10.1
-python-dotenv==1.0.0
+textblob==0.15.3
+newspaper3k==0.2.8
+nltk==3.7
 requests==2.31.0
