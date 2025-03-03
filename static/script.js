@@ -95,3 +95,6 @@ function copyThread(index) {
         .then(() => alert('Thread copied to clipboard!'))
         .catch(err => console.error('Copy failed:', err));
 }
+// For local testing
+// const apiUrl = 'http://localhost:5000/generate_thread';
+const apiUrl = 'https://twitter-generator-api.up.railway.app/generate_thread';
