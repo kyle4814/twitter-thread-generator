@@ -1,37 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Twitter Thread Generator</title>
+    <title>AI Thread Generator</title>
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
     <div class="container">
-        <h1>🚀 AI Twitter Thread Generator</h1>
-        <p>Enter your preferences and let AI generate high-performing Twitter threads for you.</p>
-        
-        <div class="card">
-            <label for="topic">Topic:</label>
-            <input type="text" id="topic" placeholder="Enter a topic (e.g., AI, Business)">
-            
-            <label for="numThreads">Number of Threads:</label>
-            <input type="number" id="numThreads" min="1" max="2" value="1">
-            
-            <label for="threadLength">Insights per Thread:</label>
-            <input type="number" id="threadLength" min="1" max="8" value="5">
-            
-            <div class="checkbox-container">
-                <input type="checkbox" id="randomMode">
-                <label for="randomMode">Enable Random Mode</label>
-            </div>
-            
-            <button id="generateBtn">Generate Thread</button>
+        <!-- Trending Topics -->
+        <div class="trending-topics">
+            <span>🔥 Trending:</span>
+            <button onclick="setTopic('AI')">🤖 AI</button>
+            <button onclick="setTopic('Crypto')">💰 Crypto</button>
         </div>
-        
-        <div id="threadContainer" class="thread-container"></div>
-    </div>
 
+        <!-- Input Section -->
+        <div class="card">
+            <input id="topic" placeholder="Enter topic">
+            <select id="platform">
+                <option value="twitter">Twitter</option>
+                <option value="linkedin">LinkedIn</option>
+            </select>
+            <button id="generateBtn">Generate</button>
+        </div>
+
+        <!-- Usage Dashboard -->
+        <div class="usage-meter">
+            <div class="progress-bar"></div>
+            <span id="usageCount">5/10 free uses remaining</span>
+        </div>
+
+        <!-- Results -->
+        <div id="results"></div>
+
+        <!-- Pro Features Preview -->
+        <div class="pro-preview">
+            <h3>🔒 PRO Features</h3>
+            <div class="locked-feature">NewsAPI</div>
+            <div class="locked-feature">NYTimes</div>
+        </div>
+    </div>
     <script src="static/script.js"></script>
 </body>
 </html>
