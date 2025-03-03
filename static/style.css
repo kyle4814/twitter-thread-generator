@@ -1,36 +1,45 @@
-/* style.css */
-.pro-badge {
-    background: linear-gradient(45deg, #ff6b6b, #ff9f43);
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.8em;
-    margin-left: 8px;
+:root {
+    --pro-gradient: linear-gradient(45deg, #FF6B6B, #FF9F43);
 }
 
-.source-chip {
-    background: rgba(255,255,255,0.05);
-    border-radius: 20px;
+.trending-topics button {
+    background: rgba(255,255,255,0.1);
+    border: none;
     padding: 8px 16px;
-    margin: 4px;
+    border-radius: 20px;
+    margin: 5px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: 0.3s;
 }
 
-.source-chip.pro-locked {
+.trending-topics button:hover {
+    background: var(--pro-gradient);
+}
+
+.usage-meter {
+    background: rgba(0,0,0,0.3);
+    height: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--pro-gradient);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+.pro-preview .locked-feature {
     opacity: 0.5;
     filter: grayscale(1);
+    position: relative;
 }
 
-.sentiment-meter {
-    display: inline-block;
-    width: 60px;
-    height: 4px;
-    background: #333;
-    border-radius: 2px;
-    margin-left: 10px;
-}
-
-.sentiment-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff4757 0%, #2ed573 100%);
+.locked-feature::after {
+    content: "🔒 PRO";
+    position: absolute;
+    right: 10px;
+    color: #FF6B6B;
+    font-size: 0.8em;
 }
