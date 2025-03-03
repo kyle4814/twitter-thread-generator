@@ -18,11 +18,12 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
-# ================== CORS CONFIG (MISSILE-LOCKED EDITION) ==================
+
 CORS(app, resources={
     r"/generate_thread": {
-        "origins": ["https://kyle4814.github.io"],  # 4814 NOT 4844
-        # ... keep other configs ...
+        "origins": ["https://kyle4844.github.io", "http://localhost:5000"],
+        "methods": ["POST"],
+        "allow_headers": ["Content-Type"],
     }
 })
 
@@ -44,7 +45,7 @@ def options_handler():
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    storage_uri="memory://",  # <-- Use in-memory storage
+    storage_uri=f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}/0",
     default_limits=["200 per day", "50 per hour"]
 )
 
