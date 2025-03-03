@@ -81,3 +81,12 @@ function renderThreads(threads) {
     });
     document.getElementById('threadContainer').innerHTML = threadsHTML;
 }
+
+function copyThread(index) {
+    const thread = document.querySelectorAll('.thread')[index];
+    const insights = Array.from(thread.querySelectorAll('.insight p'))
+                         .map(p => p.innerText.replace('✨ ', '')).join('\n\n');
+    navigator.clipboard.writeText(insights)
+        .then(() => alert('Thread copied to clipboard!'))
+        .catch(err => console.error('Copy failed:', err));
+}
