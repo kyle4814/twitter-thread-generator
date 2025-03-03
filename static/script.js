@@ -98,3 +98,6 @@ function copyThread(index) {
 // For local testing
 // const apiUrl = 'http://localhost:5000/generate_thread';
 const apiUrl = 'https://twitter-generator-api.up.railway.app/generate_thread';
+
+// Initialize button click handler
+document.getElementById('generateBtn').addEventListener('click', generateThread);
