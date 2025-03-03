@@ -20,9 +20,9 @@ redis_client = redis.Redis()
 # Initialize Rate Limiter
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,
+    key_func=get_remote_address,  # Rate limit by IP address
     storage_uri="memory://",  # Use in-memory storage for simplicity
-    default_limits=["10 per minute"]
+    default_limits=["10 per minute"]  # Default rate limit
 )
 
 # Free News API Endpoints
@@ -56,7 +56,7 @@ def server_error(error):
 
 # Main endpoint
 @app.route('/generate_thread', methods=['POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("10 per minute")  # Use "per" instead of "/"
 def generate_thread():
     try:
         # Validate request
