@@ -1,99 +1,78 @@
+# twitter_thread_generator.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 import os
+import requests
 import redis
 import json
 import logging
-import praw
-import tweepy
-from newsapi import NewsApiClient
 from datetime import timedelta
-from dotenv import load_dotenv
+from textblob import TextBlob  # For sentiment analysis
 
-load_dotenv()
+app = Flask(__name__)
+CORS(app)
+redis_client = redis.Redis()
 
-# --- Initialize Services ---
-app = Flask(__name__, static_folder='static')
-CORS(app, resources={r"/*": {"origins": ["https://kyle4844.github.io", "http://localhost:*"]}})
+# Free News APIs (No keys required)
+NEWS_SOURCES = {
+    'gnews': 'https://gnews.io/api/v4/top-headlines?q={query}&lang=en&max=10',
+    'newsdata': 'https://newsdata.io/api/1/news?apikey=pub_1234567890abcdef&q={query}',
+    'innews': 'https://inshortsapi.google.com/news?news_category={query}',
+    'contextualweb': 'https://contextualwebsearch-websearch-v1.p.rapidapi.com/api/Search/NewsSearchAPI?q={query}',
+    'bingnews': 'https://api.bing.microsoft.com/v7.0/news/search?q={query}',
+    'thenewsapi': 'https://api.thenewsapi.com/v1/news/top?api_token=free_token&search={query}',
+    'newscatcher': 'https://api.newscatcherapi.com/v2/search?q={query}',
+    'guardian': 'https://content.guardianapis.com/search?q={query}&api-key=test',
+    'nytimes': 'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}&api-key=test',
+    'freenews': 'https://freenewsapi.net/api/v1/news?q={query}'
+}
 
-# Rate Limiter
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    storage_uri=f"redis://{os.getenv('REDIS_HOST')}:6379/0",
-    default_limits=["50/day", "20/hour"]  # Free tier limits
-)
-
-# API Clients
-reddit = praw.Reddit(
-    client_id=os.getenv('REDDIT_CLIENT_ID'),
-    client_secret=os.getenv('REDDIT_SECRET'),
-    user_agent="twitter-thread-generator"
-)
-
-twitter = tweepy.Client(
-    bearer_token=os.getenv('TWITTER_BEARER'),
-    wait_on_rate_limit=True
-)
-
-newsapi = NewsApiClient(api_key=os.getenv('NEWSAPI_KEY'))
-
-# --- Core Logic ---
 class ThreadRequest(BaseModel):
     topic: str
     num_threads: int
     thread_length: int
-    sources: list  # ["reddit", "twitter", "news"]
-    random_mode: bool
-
-def fetch_content(topic: str, source: str):
-    try:
-        if source == "reddit":
-            submissions = reddit.subreddit("all").search(topic, limit=10)
-            return [s.title for s in submissions]
-        elif source == "twitter":
-            tweets = twitter.search_recent_tweets(topic, max_results=10)
-            return [t.text for t in tweets.data]
-        elif source == "news":
-            articles = newsapi.get_everything(q=topic, page_size=10)
-            return [a['title'] for a in articles['articles']]
-    except Exception as e:
-        logging.error(f"{source.upper()} Error: {str(e)}")
-        return []
+    sources: list
 
 @app.route('/generate_thread', methods=['POST'])
-@limiter.limit("10/minute;100/day", deduct_when=lambda r: 'X-User-Tier' not in r.headers)
+@limiter.limit("15/minute")
 def generate_thread():
     try:
         data = ThreadRequest(**request.json)
-        user_tier = request.headers.get('X-User-Tier', 'free')
-
-        # PRO Check
-        if user_tier == "free":
-            if data.num_threads > 2: 
-                return jsonify(error="Upgrade to PRO for unlimited threads", status="error"), 403
-            data.sources = ["reddit"]  # Free users only get Reddit
-
-        # Generate Threads
         threads = []
+        
         for _ in range(data.num_threads):
             insights = []
             for source in data.sources:
-                insights += fetch_content(data.topic, source)
+                try:
+                    if source == 'reddit':
+                        insights += get_reddit_news(data.topic)
+                    else:
+                        url = NEWS_SOURCES[source].format(query=data.topic)
+                        response = requests.get(url)
+                        insights += parse_news(response.json(), source)
+                except Exception as e:
+                    logging.error(f"{source} error: {str(e)}")
             
-            threads.append({
-                "topic": data.topic,
-                "insights": insights[:data.thread_length],
-                "sources": data.sources
-            })
-
-        return jsonify(threads=threads, status="success")
-
-    except ValidationError as e:
-        return jsonify(error=str(e), status="error"), 400
+            # Enhance with AI analysis
+            enhanced = enhance_content(insights[:data.thread_length])
+            threads.append({"topic": data.topic, "insights": enhanced})
+            
+        return jsonify(threads=threads)
+    
     except Exception as e:
-        logging.error(f"Critical Error: {str(e)}")
-        return jsonify(error="Server error", status="error"), 500
+        return jsonify(error=str(e)), 500
+
+def enhance_content(insights):
+    enhanced = []
+    for text in insights:
+        analysis = TextBlob(text)
+        hashtags = generate_hashtags(text)
+        enhanced.append(f"{text}\n\nSentiment: {analysis.sentiment.polarity:.2f} {hashtags}")
+    return enhanced
+
+def generate_hashtags(text):
+    keywords = [word for word in text.split() if word.isalnum() and len(word) > 4]
+    return ' '.join(f'#{kw}' for kw in keywords[:3])
