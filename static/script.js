@@ -22,6 +22,11 @@ async function generateThread() {
             })
         });
 
+        if (response.status === 403) {
+            showError("Upgrade to PRO for more threads");
+            return;
+        }
+
         const data = await response.json();
         if (data.status === 'error') {
             showError(data.error || "Unexpected server response.");
@@ -32,11 +37,6 @@ async function generateThread() {
     } catch (error) {
         showError(`Network Error: ${error.message}`);
     }
-}
-
-if (response.status === 403) {
-    showError("Upgrade to PRO for more threads");
-    return;
 }
 
 function validateInputs() {
@@ -95,9 +95,6 @@ function copyThread(index) {
         .then(() => alert('Thread copied to clipboard!'))
         .catch(err => console.error('Copy failed:', err));
 }
-// For local testing
-// const apiUrl = 'http://localhost:5000/generate_thread';
-const apiUrl = 'https://twitter-generator-api.up.railway.app/generate_thread';
 
 // Initialize button click handler
 document.getElementById('generateBtn').addEventListener('click', generateThread);
