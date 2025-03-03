@@ -72,3 +72,6 @@ def optimize_content(content, platform):
         'content': f"{item['summary'][:rules[platform]]}",
         'hashtags': ' '.join(f'#{kw}' for kw in item['keywords'])
     } for item in content]
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
