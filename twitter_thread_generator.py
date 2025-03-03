@@ -16,29 +16,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
-
+# ================== CORS CONFIG ==================
 CORS(app, resources={
     r"/generate_thread": {
         "origins": ["https://kyle4844.github.io", "http://localhost:5000"],
         "methods": ["POST"],
-        "allow_headers": ["Content-Type"],
+        "allow_headers": ["Content-Type"]
     }
 })
 
-# Update manual OPTIONS handler too
-@app.route('/generate_thread', methods=['OPTIONS'])
-def options_handler():
-    return '', 204, {
-        'Access-Control-Allow-Origin': 'https://kyle4814.github.io',  # FIXED
-        # ... rest unchanged ...
-    }
-
 # Initialize Redis
-    host=os.getenv('REDIS_HOST', 'redis'),  # Railway uses 'redis' hostname
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'localhost'),
     port=os.getenv('REDIS_PORT', 6379),
-    password=os.getenv('REDIS_PASSWORD', '')  # Add this line
+    db=0
 )
 
 # Configure rate limiting
@@ -106,5 +99,3 @@ def generate_thread():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.getenv('PORT', 5000))
-
-app = Flask(__name__, static_folder='static', static_url_path='/static')
