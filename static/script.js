@@ -34,6 +34,11 @@ async function generateThread() {
     }
 }
 
+if (response.status === 403) {
+    showError("Upgrade to PRO for more threads");
+    return;
+}
+
 function validateInputs() {
     const topic = document.getElementById('topic').value.trim();
     if (!topic) {
